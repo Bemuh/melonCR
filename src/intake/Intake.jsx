@@ -1,0 +1,107 @@
+import React, { useState } from 'react'
+import { openDb, exec, run } from '../db/index.js'
+import { uid, nowIso } from '../utils.js'
+import { useNavigate } from 'react-router-dom'
+
+export default function Intake(){
+  const navigate = useNavigate()
+  const [mode, setMode] = useState('')
+  const [q, setQ] = useState('')
+  const [results, setResults] = useState([])
+  const [form, setForm] = useState({ document_type: 'CC', document_number: '', first_name: '', last_name: '', sex: '', birth_date: '', phone: '', email: '', address: '', city: '' })
+
+  async function search() {
+    await openDb()
+    const rows = exec(`SELECT *, first_name || ' ' || last_name AS full_name FROM patients
+      WHERE document_number LIKE $q OR first_name LIKE $like OR last_name LIKE $like
+      ORDER BY last_name, first_name LIMIT 50`, { $q: q, $like: '%' + q + '%' })
+    setResults(rows)
+  }
+
+  async function create() {
+    if (!form.document_type || !form.document_number || !form.first_name || !form.last_name) return alert('Complete los campos mínimos')
+    const dup = exec(`SELECT id FROM patients WHERE (document_type=$t AND document_number=$n) OR (first_name=$f AND last_name=$l AND birth_date=$b)`,
+      { $t: form.document_type, $n: form.document_number, $f: form.first_name, $l: form.last_name, $b: form.birth_date || '' })
+    if (dup.length) return alert('Ya existe un paciente con esos datos. Use búsqueda o fusione duplicados.')
+    const id = uid()
+    await run(`INSERT INTO patients (id, document_type, document_number, first_name, last_name, sex, birth_date, phone, email, address, city, created_at, updated_at)
+      VALUES ($id,$dt,$dn,$fn,$ln,$sex,$bd,$ph,$em,$ad,$cy,$ca,$ua)`, {
+      $id: id, $dt: form.document_type, $dn: form.document_number, $fn: form.first_name, $ln: form.last_name,
+      $sex: form.sex, $bd: form.birth_date, $ph: form.phone, $em: form.email, $ad: form.address, $cy: form.city, $ca: nowIso(), $ua: nowIso()
+    })
+    navigate('/patient/' + id)
+  }
+
+  return (
+    <div className='card'>
+      <h1>Ingreso</h1>
+      <div className='row'>
+        <button className={mode === 'new' ? '' : 'ghost'} onClick={() => setMode('new')}>Paciente nuevo</button>
+        <button className={mode === 'existing' ? '' : 'ghost'} onClick={() => setMode('existing')}>Paciente existente</button>
+      </div>
+
+      {mode === 'existing' && (
+        <div className='card'>
+          <div className="row" style={{ alignItems: 'flex-end' }}>
+            <label style={{ flex: 1, marginTop: 0 }}> {/* override global label margin */}
+              Buscar por documento/nombre
+              <input
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                placeholder="CC, nombre o apellido"
+              />
+            </label>
+
+            <div
+              style={{
+                flex: '0 0 auto',            // don't stretch this column
+                display: 'flex',
+                alignItems: 'center'        // bottom-align the button
+              }}
+            >
+              <button onClick={search} style={{ alignSelf: 'center' }}>Buscar</button>
+            </div>
+          </div>
+          <ul>
+            {results.map(r => (
+              <li key={r.id} style={{ margin: '6px 0' }}>
+                <button onClick={() => navigate('/patient/' + r.id)}>{r.full_name} — {r.document_type} {r.document_number}</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {mode === 'new' && (
+        <div className='card'>
+          <h2>Datos mínimos del paciente</h2>
+          <div className='row'>
+            <label>Tipo doc
+              <select value={form.document_type} onChange={e => setForm({ ...form, document_type: e.target.value })}>
+                <option>CC</option><option>CE</option><option>TI</option><option>PA</option>
+              </select>
+            </label>
+            <label>Nº documento
+              <input value={form.document_number} onChange={e => setForm({ ...form, document_number: e.target.value })} />
+            </label>
+            <label>Nombres
+              <input value={form.first_name} onChange={e => setForm({ ...form, first_name: e.target.value })} />
+            </label>
+            <label>Apellidos
+              <input value={form.last_name} onChange={e => setForm({ ...form, last_name: e.target.value })} />
+            </label>
+          </div>
+          <div className='row'>
+            <label>Sexo<input value={form.sex} onChange={e => setForm({ ...form, sex: e.target.value })} /></label>
+            <label>Fecha nacimiento<input type='date' value={form.birth_date} onChange={e => setForm({ ...form, birth_date: e.target.value })} /></label>
+            <label>Teléfono<input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></label>
+            <label>Dirección<input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} /></label>
+            <label>Ciudad<input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} /></label>
+          </div>
+          <div className='row' style={{ marginTop: 12 }}></div>
+          <div className='row'><button onClick={create}>Crear y continuar</button></div>
+        </div>
+      )}
+    </div>
+  )
+}
