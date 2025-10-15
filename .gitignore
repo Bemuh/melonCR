@@ -1,2 +1,31 @@
-node_modules
-release
+# dependencies
+node_modules/
+
+# vite
+dist/
+.vite/
+
+# electron-builder outputs
+release/
+*.exe
+*.dmg
+*.AppImage
+
+# electron packager outputs (if used)
+Clinic-*/  # adjust if your folder differs
+
+# logs, caches
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.vscode/
+.idea/
+
+# misc
+*.local
+*.env
