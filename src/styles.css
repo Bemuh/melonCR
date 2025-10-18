@@ -50,3 +50,34 @@ hr{border:0;border-top:1px solid #eee;margin:12px 0}
   background:#f59e0b;           /* amber */
   box-shadow: 0 0 0 1px rgba(0,0,0,.08) inset;
 }
+.section-title-empty { color: #b00020; }
+
+/* Diagnósticos layout */
+.diag-grid {
+  display: grid;
+  grid-template-columns: 240px 260px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+.diag-title {
+  font-weight: 600;
+}
+
+/* Suggest dropdown */
+.input-wrap { position: relative; }
+.suggest {
+  position: absolute;
+  left: 0; right: 0; top: calc(100% + 2px);
+  background: #fff;
+  border: 1px solid #ddd;
+  box-shadow: 0 4px 18px rgba(0,0,0,.07);
+  max-height: 220px;
+  overflow: auto;
+  z-index: 20;
+}
+.suggest li { padding: 6px 8px; cursor: pointer; }
+.suggest li:hover { background: #f3f3f3; }
+
+.diag-block { margin: 10px 0; }
+.diag-block textarea { min-height: 90px; }
