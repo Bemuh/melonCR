@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { exec, run } from '../db/index.js';
-import ICD10 from '../data/icd10.json';
+import { loadICD10 } from '../data/icd10Loader.js';
 
 // ====================== MAIN ======================
 export default function Diagnoses({ encounter, onCountChange }) {
@@ -28,7 +28,7 @@ export default function Diagnoses({ encounter, onCountChange }) {
     setRel2({ code: sec[1]?.code || '', label: sec[1]?.label || '' });
     setRel3({ code: sec[2]?.code || '', label: sec[2]?.label || '' });
 
-    if (rows[0]?.diagnosis_type) setDtype(rows[0].diagnosis_type);
+    if (rows[0]?.diagnosis_type) setDtype(rows[0].diagnosis_type || 'Impresión Diagnóstica');
     setFinalidad(encounter.finalidad_consulta || '');
     setCausa(encounter.causa_externa || '');
   }, [encounter?.id]);
@@ -74,17 +74,23 @@ export default function Diagnoses({ encounter, onCountChange }) {
     onCountChange?.(list.length);
   }
 
-  // ------- Autocomplete helpers (stable) -------
-  const normalized = useMemo(
-    () =>
-      ICD10.map(it => ({
-        code: it.code,
-        codeRaw: it.code.replace('.', '').toLowerCase(),
-        label: it.label,
-        labelLow: it.label.toLowerCase(),
-      })),
-    []
-  );
+  // ------- Autocomplete dataset (lazy-loaded) -------
+  const [normalized, setNormalized] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    loadICD10().then(list => {
+      if (!alive) return;
+      setNormalized(
+        list.map(it => ({
+          code: it.code,                  // already normalized (no dot)
+          codeRaw: it.code.toLowerCase(), // search form
+          label: it.label,
+          labelLow: it.label.toLowerCase(),
+        }))
+      );
+    });
+    return () => { alive = false; };
+  }, []);
 
   const findByCodePrefix = useCallback((input) => {
     const q = (input || '').replace('.', '').toLowerCase();
@@ -102,6 +108,7 @@ export default function Diagnoses({ encounter, onCountChange }) {
     <div>
       <DxRow
         title="Diagnóstico Principal:"
+        kind="principal"
         state={principal}
         setState={setPrincipal}
         findByCodePrefix={findByCodePrefix}
@@ -110,6 +117,7 @@ export default function Diagnoses({ encounter, onCountChange }) {
       />
       <DxRow
         title="Diagnóstico Relacionado nro 1:"
+        kind="rel1"
         state={rel1}
         setState={setRel1}
         findByCodePrefix={findByCodePrefix}
@@ -118,6 +126,7 @@ export default function Diagnoses({ encounter, onCountChange }) {
       />
       <DxRow
         title="Diagnóstico Relacionado nro 2:"
+        kind="rel2"
         state={rel2}
         setState={setRel2}
         findByCodePrefix={findByCodePrefix}
@@ -126,6 +135,7 @@ export default function Diagnoses({ encounter, onCountChange }) {
       />
       <DxRow
         title="Diagnóstico Relacionado nro 3:"
+        kind="rel3"
         state={rel3}
         setState={setRel3}
         findByCodePrefix={findByCodePrefix}
@@ -179,7 +189,7 @@ export default function Diagnoses({ encounter, onCountChange }) {
 }
 
 // ====================== STABLE SUBCOMPONENTS ======================
-function DxRow({ title, state, setState, findByCodePrefix, findByNameSubstr, persistAll }) {
+function DxRow({ title, kind, state, setState, findByCodePrefix, findByNameSubstr, persistAll }) {
   return (
     <div className="diag-grid">
       <div className="diag-title">{title}</div>
@@ -192,7 +202,8 @@ function DxRow({ title, state, setState, findByCodePrefix, findByNameSubstr, per
         onPick={it => {
           const next = { code: it.code, label: it.label };
           setState(next);
-          persistAll({ principal: next }); // save immediately
+          // persist with the correct row updated
+          persistAll({ [kind]: next });
         }}
         dataFn={findByCodePrefix}
         renderItem={it => <>{it.code} — {it.label}</>}
@@ -206,7 +217,8 @@ function DxRow({ title, state, setState, findByCodePrefix, findByNameSubstr, per
         onPick={it => {
           const next = { code: it.code, label: it.label };
           setState(next);
-          persistAll({ principal: next }); // save immediately
+          // persist with the correct row updated
+          persistAll({ [kind]: next });
         }}
         dataFn={findByNameSubstr}
         renderItem={it => <>{it.code} — {it.label}</>}
