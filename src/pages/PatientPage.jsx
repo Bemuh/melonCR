@@ -4,9 +4,6 @@ import {
   openDb,
   exec,
   run,
-  exportFile,
-  chooseBackupFile,
-  hasBackupFile,
   persistNow,
 } from "../db/index.js";
 import {
@@ -25,20 +22,25 @@ export default function PatientPage() {
 
   const [patient, setPatient] = useState(null);
   const [encounters, setEncounters] = useState([]);
-  const [activeEncounterId, setActiveEncounterId] = useState(null);
+  const [activeEncounterId, setActiveEncounterId] =
+    useState(null);
   const [encounter, setEncounter] = useState(null);
-  const [hasBackup, setHasBackup] = useState(false);
 
   // counters to mark sections empty/full
-  const [counts, setCounts] = useState({ dx: 0, rx: 0, pr: 0 });
+  const [counts, setCounts] = useState({
+    dx: 0,
+    rx: 0,
+    pr: 0,
+  });
 
   // Load patient + encounters
   useEffect(() => {
     openDb().then(async () => {
       const p =
-        exec(`SELECT * FROM patients WHERE id=$id`, {
-          $id: patientId,
-        })[0] || null;
+        exec(
+          `SELECT * FROM patients WHERE id=$id`,
+          { $id: patientId }
+        )[0] || null;
 
       const e = exec(
         `SELECT * FROM encounters WHERE patient_id=$id ORDER BY occurred_at DESC`,
@@ -53,8 +55,6 @@ export default function PatientPage() {
       } else if (p) {
         createNewEncounter(p);
       }
-
-      setHasBackup(await hasBackupFile());
     });
   }, [patientId]);
 
@@ -63,9 +63,10 @@ export default function PatientPage() {
     if (!activeEncounterId) return;
 
     const e =
-      exec(`SELECT * FROM encounters WHERE id=$id`, {
-        $id: activeEncounterId,
-      })[0] || null;
+      exec(
+        `SELECT * FROM encounters WHERE id=$id`,
+        { $id: activeEncounterId }
+      )[0] || null;
     if (!e) return;
 
     setEncounter(e);
@@ -151,9 +152,10 @@ export default function PatientPage() {
     );
 
     const e =
-      exec(`SELECT * FROM encounters WHERE id=$id`, {
-        $id: id,
-      })[0] || null;
+      exec(
+        `SELECT * FROM encounters WHERE id=$id`,
+        { $id: id }
+      )[0] || null;
 
     if (!e) return;
 
@@ -199,19 +201,31 @@ export default function PatientPage() {
 
   const empties = {
     datos: patientInfoEmpty,
-    motivo: !String(encounter.chief_complaint || "").trim(),
-    enfermedad: !String(encounter.hpi || "").trim(),
-    antecedentes: !String(encounter.antecedentes || "").trim(),
+    motivo: !String(
+      encounter.chief_complaint || ""
+    ).trim(),
+    enfermedad: !String(
+      encounter.hpi || ""
+    ).trim(),
+    antecedentes: !String(
+      encounter.antecedentes || ""
+    ).trim(),
     vitales: vitEmpty,
-    examen: !String(encounter.physical_exam || "").trim(),
-    analisis: !String(encounter.impression || "").trim(),
-    plan: !String(encounter.plan || "").trim(),
+    examen: !String(
+      encounter.physical_exam || ""
+    ).trim(),
+    analisis: !String(
+      encounter.impression || ""
+    ).trim(),
+    plan: !String(
+      encounter.plan || ""
+    ).trim(),
     dx: counts.dx === 0,
     rx: counts.rx === 0,
     pr: counts.pr === 0,
   };
 
-  // key so that when encounter changes, SectionCards remount and defaultOpen recomputes
+  // key so SectionCards remount when encounter changes
   const sectionKey = activeEncounterId;
 
   return (
@@ -221,51 +235,53 @@ export default function PatientPage() {
         <div>
           <div className="kicker">Paciente</div>
           <div>
-            <strong>{fullName(patient)}</strong> — {patient.document_type}{" "}
+            <strong>{fullName(patient)}</strong>{" "}
+            — {patient.document_type}{" "}
             {patient.document_number}
           </div>
         </div>
         <div className="no-print">
-          <Link to="/">
-            <button className="ghost">Volver al inicio</button>
-          </Link>
-
-          {/* Historia completa */}
-          <button
-            className="ghost"
-            onClick={() => navigate("/print/" + patient.id)}
-          >
-            Imprimir historia completa
-          </button>
-
-          {/* Fórmula médica solo del encuentro activo */}
-          <button
-            className="ghost"
-            disabled={!activeEncounterId}
-            onClick={() =>
-              activeEncounterId && navigate("/rx/" + activeEncounterId)
-            }
-          >
-            Imprimir fórmula médica
-          </button>
-
-          <button className="ghost" onClick={exportFile}>
-            Respaldo inmediato
-          </button>
-          <button
-            className="ghost"
-            onClick={async () => {
-              await chooseBackupFile();
-              setHasBackup(true);
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              justifyContent: "flex-end",
             }}
-            title={
-              hasBackup
-                ? "Cambiar archivo de respaldo fijo"
-                : "Elegir archivo de respaldo fijo"
-            }
           >
-            {hasBackup ? "Cambiar archivo fijo" : "Elegir archivo fijo"}
-          </button>
+            <Link to="/">
+              <button className="ghost">
+                Volver al inicio
+              </button>
+            </Link>
+
+            {/* Historia clínica completa */}
+            <button
+              className="ghost"
+              onClick={() =>
+                navigate("/print/" + patient.id)
+              }
+            >
+              Imprimir historia completa
+            </button>
+
+            {/* Fórmula médica del encuentro activo */}
+            <button
+              className="ghost"
+              disabled={!activeEncounterId}
+              onClick={() => {
+                if (!activeEncounterId) return;
+                if (counts.rx === 0) {
+                  alert(
+                    "No hay medicamentos registrados en esta atención. Registre la fórmula médica antes de imprimir."
+                  );
+                  return;
+                }
+                navigate("/rx/" + activeEncounterId);
+              }}
+            >
+              Imprimir fórmula médica
+            </button>
+          </div>
         </div>
       </div>
 
@@ -279,14 +295,23 @@ export default function PatientPage() {
               onChange={(e) =>
                 e.target.value === "__new__"
                   ? createNewEncounter(patient)
-                  : setActiveEncounterId(e.target.value)
+                  : setActiveEncounterId(
+                      e.target.value
+                    )
               }
             >
-              <option value="__new__">➕ Nueva atención</option>
+              <option value="__new__">
+                ➕ Nueva atención
+              </option>
               {encounters.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {isoToBogotaInput(e.occurred_at).replace("T", " ")} —{" "}
-                  {e.cas_code}
+                <option
+                  key={e.id}
+                  value={e.id}
+                >
+                  {isoToBogotaInput(
+                    e.occurred_at
+                  ).replace("T", " ")}{" "}
+                  — {e.cas_code}
                 </option>
               ))}
             </select>
@@ -300,14 +325,27 @@ export default function PatientPage() {
                 const v = e.target.value;
                 await run(
                   `UPDATE encounters SET encounter_type=$v, updated_at=$ua WHERE id=$id`,
-                  { $v: v, $id: encounter.id, $ua: nowIso() }
+                  {
+                    $v: v,
+                    $id: encounter.id,
+                    $ua: nowIso(),
+                  }
                 );
-                setEncounter({ ...encounter, encounter_type: v });
+                setEncounter({
+                  ...encounter,
+                  encounter_type: v,
+                });
               }}
             >
-              <option value="first_visit">Primera vez / ingreso</option>
-              <option value="follow_up">Control / seguimiento</option>
-              <option value="minor_procedure">Procedimientos menores</option>
+              <option value="first_visit">
+                Primera vez / ingreso
+              </option>
+              <option value="follow_up">
+                Control / seguimiento
+              </option>
+              <option value="minor_procedure">
+                Procedimientos menores
+              </option>
             </select>
           </label>
 
@@ -316,14 +354,26 @@ export default function PatientPage() {
             <input
               type="datetime-local"
               step="60"
-              value={isoToBogotaInput(encounter.occurred_at)}
+              value={isoToBogotaInput(
+                encounter.occurred_at
+              )}
               onChange={async (e) => {
-                const newIso = bogotaInputToIso(e.target.value);
+                const newIso =
+                  bogotaInputToIso(
+                    e.target.value
+                  );
                 await run(
                   `UPDATE encounters SET occurred_at=$v, updated_at=$ua WHERE id=$id`,
-                  { $v: newIso, $id: encounter.id, $ua: nowIso() }
+                  {
+                    $v: newIso,
+                    $id: encounter.id,
+                    $ua: nowIso(),
+                  }
                 );
-                setEncounter({ ...encounter, occurred_at: newIso });
+                setEncounter({
+                  ...encounter,
+                  occurred_at: newIso,
+                });
               }}
             />
           </label>
@@ -331,28 +381,40 @@ export default function PatientPage() {
           <label>
             CAS
             <input
-              defaultValue={encounter.cas_code || ""}
+              defaultValue={
+                encounter.cas_code || ""
+              }
               onBlur={async (e) => {
                 const v = e.target.value;
                 await run(
                   `UPDATE encounters SET cas_code=$v, updated_at=$ua WHERE id=$id`,
-                  { $v: v, $id: encounter.id, $ua: nowIso() }
+                  {
+                    $v: v,
+                    $id: encounter.id,
+                    $ua: nowIso(),
+                  }
                 );
-                setEncounter({ ...encounter, cas_code: v });
+                setEncounter({
+                  ...encounter,
+                  cas_code: v,
+                });
               }}
             />
           </label>
         </div>
       </div>
 
-      {/* Sections (remount on encounter change for defaultOpen) */}
+      {/* Sections (remount on encounter change) */}
       <div key={sectionKey}>
         <SectionCard
           title="Datos del paciente"
           empty={empties.datos}
           defaultOpen={!empties.datos}
         >
-          <PatientFields patient={patient} setPatient={setPatient} />
+          <PatientFields
+            patient={patient}
+            setPatient={setPatient}
+          />
         </SectionCard>
 
         <SectionCard
@@ -399,7 +461,10 @@ export default function PatientPage() {
           empty={empties.vitales}
           defaultOpen={!empties.vitales}
         >
-          <Vitals encounter={encounter} setEncounter={setEncounter} />
+          <Vitals
+            encounter={encounter}
+            setEncounter={setEncounter}
+          />
         </SectionCard>
 
         <SectionCard
@@ -423,7 +488,10 @@ export default function PatientPage() {
           <Diagnoses
             encounter={encounter}
             onCountChange={(n) =>
-              setCounts((c) => ({ ...c, dx: n }))
+              setCounts((c) => ({
+                ...c,
+                dx: n,
+              }))
             }
           />
         </SectionCard>
@@ -462,7 +530,10 @@ export default function PatientPage() {
           <Prescriptions
             encounter={encounter}
             onCountChange={(n) =>
-              setCounts((c) => ({ ...c, rx: n }))
+              setCounts((c) => ({
+                ...c,
+                rx: n,
+              }))
             }
           />
         </SectionCard>
@@ -475,20 +546,31 @@ export default function PatientPage() {
           <Procedures
             encounter={encounter}
             onCountChange={(n) =>
-              setCounts((c) => ({ ...c, pr: n }))
+              setCounts((c) => ({
+                ...c,
+                pr: n,
+              }))
             }
           />
         </SectionCard>
 
-        <SectionCard title="Adjuntos" defaultOpen={false}>
+        <SectionCard
+          title="Adjuntos"
+          defaultOpen={false}
+        >
           <div className="small">
-            Adjuntos — pendiente definir metadatos y carga de archivos.
+            Adjuntos — pendiente definir
+            metadatos y carga de archivos.
           </div>
         </SectionCard>
 
-        <SectionCard title="Evoluciones" defaultOpen={false}>
+        <SectionCard
+          title="Evoluciones"
+          defaultOpen={false}
+        >
           <div className="small">
-            Evoluciones — pendiente definir contenido.
+            Evoluciones — pendiente definir
+            contenido.
           </div>
         </SectionCard>
       </div>
@@ -516,7 +598,9 @@ function SectionCard({
           await persistNow();
         }}
       >
-        <span className="caret">{open ? "▾" : "▸"}</span>
+        <span className="caret">
+          {open ? "▾" : "▸"}
+        </span>
         <h2 className="section-title">
           {title}
           {empty && (
@@ -527,7 +611,11 @@ function SectionCard({
           )}
         </h2>
       </button>
-      {open && <div className="section-body">{children}</div>}
+      {open && (
+        <div className="section-body">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -543,9 +631,16 @@ function PatientFields({ patient, setPatient }) {
             const v = e.target.value;
             await run(
               `UPDATE patients SET phone=$v, updated_at=$ua WHERE id=$id`,
-              { $v: v, $id: patient.id, $ua: nowIso() }
+              {
+                $v: v,
+                $id: patient.id,
+                $ua: nowIso(),
+              }
             );
-            setPatient({ ...patient, phone: v });
+            setPatient({
+              ...patient,
+              phone: v,
+            });
           }}
         />
       </label>
@@ -557,9 +652,16 @@ function PatientFields({ patient, setPatient }) {
             const v = e.target.value;
             await run(
               `UPDATE patients SET email=$v, updated_at=$ua WHERE id=$id`,
-              { $v: v, $id: patient.id, $ua: nowIso() }
+              {
+                $v: v,
+                $id: patient.id,
+                $ua: nowIso(),
+              }
             );
-            setPatient({ ...patient, email: v });
+            setPatient({
+              ...patient,
+              email: v,
+            });
           }}
         />
       </label>
@@ -571,9 +673,16 @@ function PatientFields({ patient, setPatient }) {
             const v = e.target.value;
             await run(
               `UPDATE patients SET address=$v, updated_at=$ua WHERE id=$id`,
-              { $v: v, $id: patient.id, $ua: nowIso() }
+              {
+                $v: v,
+                $id: patient.id,
+                $ua: nowIso(),
+              }
             );
-            setPatient({ ...patient, address: v });
+            setPatient({
+              ...patient,
+              address: v,
+            });
           }}
         />
       </label>
@@ -585,9 +694,16 @@ function PatientFields({ patient, setPatient }) {
             const v = e.target.value;
             await run(
               `UPDATE patients SET city=$v, updated_at=$ua WHERE id=$id`,
-              { $v: v, $id: patient.id, $ua: nowIso() }
+              {
+                $v: v,
+                $id: patient.id,
+                $ua: nowIso(),
+              }
             );
-            setPatient({ ...patient, city: v });
+            setPatient({
+              ...patient,
+              city: v,
+            });
           }}
         />
       </label>
@@ -595,7 +711,12 @@ function PatientFields({ patient, setPatient }) {
   );
 }
 
-function TextAreaAuto({ encounter, setEncounter, field, label }) {
+function TextAreaAuto({
+  encounter,
+  setEncounter,
+  field,
+  label,
+}) {
   return (
     <label>
       {label}
@@ -605,9 +726,16 @@ function TextAreaAuto({ encounter, setEncounter, field, label }) {
           const v = e.target.value;
           await run(
             `UPDATE encounters SET ${field}=$v, updated_at=$ua WHERE id=$id`,
-            { $v: v, $id: encounter.id, $ua: nowIso() }
+            {
+              $v: v,
+              $id: encounter.id,
+              $ua: nowIso(),
+            }
           );
-          setEncounter({ ...encounter, [field]: v });
+          setEncounter({
+            ...encounter,
+            [field]: v,
+          });
         }}
       />
     </label>
@@ -615,7 +743,9 @@ function TextAreaAuto({ encounter, setEncounter, field, label }) {
 }
 
 function Vitals({ encounter, setEncounter }) {
-  const v = encounter.vitals_json ? JSON.parse(encounter.vitals_json) : {};
+  const v = encounter.vitals_json
+    ? JSON.parse(encounter.vitals_json)
+    : {};
   const [state, setState] = useState({
     taS: v.taS || "",
     taD: v.taD || "",
@@ -629,8 +759,12 @@ function Vitals({ encounter, setEncounter }) {
   });
 
   function calcBMI(next) {
-    const talla = Number(next.talla || state.talla || 0);
-    const peso = Number(next.peso || state.peso || 0);
+    const talla = Number(
+      next.talla || state.talla || 0
+    );
+    const peso = Number(
+      next.peso || state.peso || 0
+    );
     return peso && talla
       ? (peso / (talla / 100) ** 2).toFixed(1)
       : "";
@@ -660,7 +794,11 @@ function Vitals({ encounter, setEncounter }) {
         {labelText}
         <input
           defaultValue={state[name]}
-          onBlur={(e) => save({ [name]: e.target.value })}
+          onBlur={(e) =>
+            save({
+              [name]: e.target.value,
+            })
+          }
         />
       </label>
     );
@@ -677,7 +815,10 @@ function Vitals({ encounter, setEncounter }) {
       {field("talla", "Talla (cm)")}
       {field("peso", "Peso (kg)")}
       <div className="small">
-        IMC: <span className="badge">{state.bmi || "-"}</span>
+        IMC:{" "}
+        <span className="badge">
+          {state.bmi || "-"}
+        </span>
       </div>
     </div>
   );
@@ -685,7 +826,11 @@ function Vitals({ encounter, setEncounter }) {
 
 function generateCAS() {
   const k = "cas_seq";
-  const n = parseInt(localStorage.getItem(k) || "0", 10) + 1;
+  const n =
+    parseInt(
+      localStorage.getItem(k) || "0",
+      10
+    ) + 1;
   localStorage.setItem(k, String(n));
   return `CAS-${String(n).padStart(6, "0")}`;
 }
