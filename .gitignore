@@ -29,3 +29,5 @@ Thumbs.db
 # misc
 *.local
 *.env
+
+src/config/doctor.json
