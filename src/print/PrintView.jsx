@@ -8,18 +8,25 @@ export default function PrintView() {
   const [patient, setPatient] = useState(null);
   const [encounters, setEncounters] = useState([]);
 
+  // Fixed timestamp for this print job
+  const [printedAt] = useState(() => formatPrintDateTime(new Date()));
+
   useEffect(() => {
     openDb().then(() => {
       const p = exec(
         `SELECT * FROM patients WHERE id=$id`,
         { $id: patientId }
       )[0];
+
       const e = exec(
         `SELECT * FROM encounters WHERE patient_id=$id ORDER BY occurred_at ASC`,
         { $id: patientId }
       );
+
       setPatient(p);
       setEncounters(e);
+
+      // Give React a moment to render before invoking print
       setTimeout(() => window.print(), 400);
     });
   }, [patientId]);
@@ -36,26 +43,27 @@ export default function PrintView() {
     <div className="print-page">
       <div style={{ padding: '16px' }}>
         <h1>
-          Historia Clínica — {patient.first_name}{' '}
-          {patient.last_name}
+          Historia Clínica — {patient.first_name} {patient.last_name}
         </h1>
         <div className="small">
-          Documento: {patient.document_type}{' '}
-          {patient.document_number}
+          Documento: {patient.document_type} {patient.document_number}
         </div>
         <hr />
         {encounters.map(e => (
           <EncounterBlock key={e.id} e={e} />
         ))}
       </div>
+
+      {/* Footer: timestamp + page X de Y (page numbers via CSS) */}
+      <div className="print-footer">
+        Impreso: {printedAt}
+      </div>
     </div>
   );
 }
 
 function EncounterBlock({ e }) {
-  const vit = e.vitals_json
-    ? JSON.parse(e.vitals_json)
-    : {};
+  const vit = e.vitals_json ? JSON.parse(e.vitals_json) : {};
 
   const rows = exec(
     `SELECT * FROM diagnoses WHERE encounter_id=$id ORDER BY is_primary DESC`,
@@ -72,8 +80,7 @@ function EncounterBlock({ e }) {
       }}
     >
       <h2>
-        {isoToBogotaText(e.occurred_at)} — {e.cas_code} —{' '}
-        {labelType(e.encounter_type)}
+        {isoToBogotaText(e.occurred_at)} — {e.cas_code} — {labelType(e.encounter_type)}
       </h2>
 
       {e.objective && (
@@ -82,76 +89,44 @@ function EncounterBlock({ e }) {
         </div>
       )}
 
-      <DiagnosticosPrint
-        principal={principal}
-        relacionados={rel}
-        e={e}
-      />
+      <DiagnosticosPrint principal={principal} relacionados={rel} e={e} />
 
       {e.chief_complaint && (
-        <Section
-          title="Motivo de consulta"
-          text={e.chief_complaint}
-        />
+        <Section title="Motivo de consulta" text={e.chief_complaint} />
       )}
       {e.hpi && (
-        <Section
-          title="Enfermedad actual"
-          text={e.hpi}
-        />
+        <Section title="Enfermedad actual" text={e.hpi} />
       )}
       {e.antecedentes && (
-        <Section
-          title="Antecedentes"
-          text={e.antecedentes}
-        />
+        <Section title="Antecedentes" text={e.antecedentes} />
       )}
 
       {vit && (vit.taS || vit.talla) && (
         <Section
           title="Signos vitales"
           text={
-            'TA ' +
-            (vit.taS || '-') +
-            '/' +
-            (vit.taD || '-') +
-            ' FC ' +
-            (vit.fc || '-') +
-            ' FR ' +
-            (vit.fr || '-') +
-            ' Temp ' +
-            (vit.temp || '-') +
-            ' SatO₂ ' +
-            (vit.spo2 || '-') +
-            ' Talla ' +
-            (vit.talla || '-') +
-            ' Peso ' +
-            (vit.peso || '-') +
-            ' IMC ' +
-            (vit.bmi || '-')
+            'TA ' + (vit.taS || '-') + '/' + (vit.taD || '-') +
+            ' FC ' + (vit.fc || '-') +
+            ' FR ' + (vit.fr || '-') +
+            ' Temp ' + (vit.temp || '-') +
+            ' SatO₂ ' + (vit.spo2 || '-') +
+            ' Talla ' + (vit.talla || '-') +
+            ' Peso ' + (vit.peso || '-') +
+            ' IMC ' + (vit.bmi || '-')
           }
         />
       )}
 
       {e.physical_exam && (
-        <Section
-          title="Examen físico"
-          text={e.physical_exam}
-        />
+        <Section title="Examen físico" text={e.physical_exam} />
       )}
 
       {e.plan && (
-        <Section
-          title="Plan / Conducta"
-          text={e.plan}
-        />
+        <Section title="Plan / Conducta" text={e.plan} />
       )}
 
       {e.impression && (
-        <Section
-          title="Análisis"
-          text={e.impression}
-        />
+        <Section title="Análisis" text={e.impression} />
       )}
 
       <Prescriptions encounterId={e.id} />
@@ -197,8 +172,7 @@ function DiagnosticosPrint({ principal, relacionados, e }) {
       </div>
       <div>Tipo de diagnóstico: {tipo}</div>
       <div>
-        Finalidad consulta:{' '}
-        {e.finalidad_consulta || '-'}
+        Finalidad consulta: {e.finalidad_consulta || '-'}
       </div>
       <div>
         Causa externa: {e.causa_externa || '-'}
@@ -211,9 +185,7 @@ function Section({ title, text }) {
   return (
     <div>
       <strong>{title}</strong>
-      <div style={{ whiteSpace: 'pre-wrap' }}>
-        {text}
-      </div>
+      <div style={{ whiteSpace: 'pre-wrap' }}>{text}</div>
     </div>
   );
 }
@@ -249,14 +221,11 @@ function Prescriptions({ encounterId }) {
           const days = rx.duration_days;
 
           const partes = [];
-          if (rx.dose)
-            partes.push(`${rx.dose}`);
-          if (freq)
-            partes.push(`cada ${freq} horas`);
-          if (days)
-            partes.push(
-              `durante ${days} día${Number(days) === 1 ? '' : 's'}`
-            );
+          if (rx.dose) partes.push(`${rx.dose}`);
+          if (freq) partes.push(`cada ${freq} horas`);
+          if (days) partes.push(
+            `durante ${days} día${Number(days) === 1 ? '' : 's'}`
+          );
 
           const frase =
             partes.length > 0
@@ -302,8 +271,7 @@ function Procedures({ encounterId }) {
       <ul>
         {rows.map(pr => (
           <li key={pr.id}>
-            {pr.name}{' '}
-            {pr.code ? `(${pr.code})` : ''} — Sitio{' '}
+            {pr.name} {pr.code ? `(${pr.code})` : ''} — Sitio{' '}
             {pr.anatomical_site || '-'} — Lote{' '}
             {pr.lot_number || '-'}{' '}
             {pr.consent_obtained
@@ -314,4 +282,16 @@ function Procedures({ encounterId }) {
       </ul>
     </div>
   );
+}
+
+/** dd-mm-yyyy hh:mm:ss */
+function formatPrintDateTime(d) {
+  const pad = n => String(n).padStart(2, '0');
+  const dd = pad(d.getDate());
+  const mm = pad(d.getMonth() + 1);
+  const yyyy = d.getFullYear();
+  const hh = pad(d.getHours());
+  const mi = pad(d.getMinutes());
+  const ss = pad(d.getSeconds());
+  return `${dd}-${mm}-${yyyy} ${hh}:${mi}:${ss}`;
 }

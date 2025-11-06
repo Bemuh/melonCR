@@ -3,13 +3,25 @@ import { useParams, useNavigate } from "react-router-dom";
 import { openDb, exec } from "../db/index.js";
 import doctor from "../config/doctor.json";
 
-// Helper: ISO → yyyy-mm-dd (local date portion)
+/** ISO → yyyy-mm-dd */
 function formatYMD(iso) {
   if (!iso) return "";
   return String(iso).slice(0, 10);
 }
 
-// Helper: add days to ISO date
+/** dd-mm-yyyy hh:mm:ss for footer */
+function formatPrintDateTime(d) {
+  const pad = (n) => String(n).padStart(2, "0");
+  const dd = pad(d.getDate());
+  const mm = pad(d.getMonth() + 1);
+  const yyyy = d.getFullYear();
+  const hh = pad(d.getHours());
+  const mi = pad(d.getMinutes());
+  const ss = pad(d.getSeconds());
+  return `${dd}-${mm}-${yyyy} ${hh}:${mi}:${ss}`;
+}
+
+/** Add days to ISO date */
 function addDays(iso, days) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -17,7 +29,7 @@ function addDays(iso, days) {
   return d.toISOString();
 }
 
-// Compute quantity for a given chunk of days
+/** Compute quantity for a chunk of days */
 function computeChunkTotal(p, days) {
   const base =
     parseFloat(p.dose || p.quantity || p.cantidad || 0) || 0; // cantidad por toma
@@ -30,9 +42,12 @@ function computeChunkTotal(p, days) {
   return Math.round(total * 100) / 100;
 }
 
-// Build copies of the formula based on 30-day blocks.
-// Copies share all header data; each copy shows only meds
-// that still have días restantes in that block.
+/**
+ * Build copies:
+ * - If max duration <= 30: single formula (1 copy)
+ * - If > 30: multiple copies in blocks of 30 days
+ *   labeled with renewal dates as requested.
+ */
 function buildCopies(prescriptions, encounter) {
   if (!prescriptions.length || !encounter?.occurred_at) return [];
 
@@ -42,18 +57,16 @@ function buildCopies(prescriptions, encounter) {
   const maxDuration = Math.max(...durations, 0);
   const startIso = encounter.occurred_at;
 
+  // <= 30 days → one copy
   if (!maxDuration || maxDuration <= 30) {
-    // Single formula
     const items = prescriptions.map((p) => {
-      const total = computeChunkTotal(
-        p,
-        Number(p.duration_days || 0) || 0
-      );
+      const days = Number(p.duration_days || 0) || 0;
+      const total = computeChunkTotal(p, days);
       return {
         name: p.active_ingredient || p.name || "",
         dose: p.dose || p.cantidad || "",
         freq: p.frequency || "",
-        days: Number(p.duration_days || 0) || "",
+        days,
         total,
         indications: p.indications || "",
       };
@@ -67,18 +80,14 @@ function buildCopies(prescriptions, encounter) {
     ];
   }
 
+  // > 30 days → multiple 30-day blocks
   const copies = [];
   const numCopies = Math.ceil(maxDuration / 30);
 
   for (let i = 0; i < numCopies; i++) {
     const isFirst = i === 0;
-    // Example rule:
-    // copy 0 label = start date
-    // copy 1 label = start + (30*1 - 1) days
-    // copy 2 label = start + (30*2 - 1) days, etc.
     const offset = isFirst ? 0 : 30 * i - 1;
     const labelDate = formatYMD(addDays(startIso, offset));
-
     const items = [];
 
     prescriptions.forEach((p) => {
@@ -116,6 +125,9 @@ export default function PrintPrescription() {
   const [prescriptions, setPrescriptions] = useState([]);
   const [diagnoses, setDiagnoses] = useState([]);
 
+  // Fixed timestamp for this print job (used in footer)
+  const [printedAt] = useState(() => formatPrintDateTime(new Date()));
+
   useEffect(() => {
     openDb().then(() => {
       const enc =
@@ -146,7 +158,6 @@ export default function PrintPrescription() {
       setPrescriptions(rx || []);
       setDiagnoses(dx || []);
 
-      // Print automatically once data is ready
       setTimeout(() => window.print(), 400);
     });
   }, [encounterId]);
@@ -166,7 +177,6 @@ export default function PrintPrescription() {
   }
 
   const copies = buildCopies(prescriptions, encounter);
-
   const principalDx =
     diagnoses.find((d) => d.is_primary === 1) || diagnoses[0] || null;
 
@@ -181,7 +191,7 @@ export default function PrintPrescription() {
             fontSize: "13px",
           }}
         >
-          {/* Header with doctor & title */}
+          {/* Header: doctor + title + date */}
           <div
             style={{
               display: "flex",
@@ -199,18 +209,12 @@ export default function PrintPrescription() {
               >
                 {doctor.name}
               </div>
-              {doctor.specialty && (
-                <div>{doctor.specialty}</div>
-              )}
+              {doctor.specialty && <div>{doctor.specialty}</div>}
               {doctor.professionalId && (
                 <div>{doctor.professionalId}</div>
               )}
-              {doctor.address && (
-                <div>{doctor.address}</div>
-              )}
-              {doctor.phone && (
-                <div>{doctor.phone}</div>
-              )}
+              {doctor.address && <div>{doctor.address}</div>}
+              {doctor.phone && <div>{doctor.phone}</div>}
             </div>
             <div style={{ textAlign: "right" }}>
               <div
@@ -227,7 +231,7 @@ export default function PrintPrescription() {
 
           <hr />
 
-          {/* Patient + encounter info */}
+          {/* Patient & encounter info */}
           <div style={{ marginTop: "6px", marginBottom: "6px" }}>
             <div>
               <strong>Paciente:</strong>{" "}
@@ -258,12 +262,12 @@ export default function PrintPrescription() {
               <strong>CAS:</strong>{" "}
               {encounter.cas_code || "-"}
             </div>
-            {/* <div>
-              <strong>Diagnóstico principal:</strong>{" "}
-              {principalDx
-                ? `${principalDx.code} ${principalDx.label}`
-                : "-"}
-            </div> */}
+            {principalDx && (
+              <div>
+                <strong>Diagnóstico principal:</strong>{" "}
+                {principalDx.code} {principalDx.label}
+              </div>
+            )}
           </div>
 
           <hr />
@@ -288,21 +292,15 @@ export default function PrintPrescription() {
                     {it.total !== "" && `(# ${it.total})`}
                   </div>
                   <div>
-                    {/* Clear Spanish wording */}
                     {it.dose && it.freq && it.days ? (
                       <>
                         Usar{" "}
-                        <strong>
-                          {it.dose}
-                        </strong>{" "}
+                        <strong>{it.dose}</strong>{" "}
                         cada{" "}
-                        <strong>
-                          {it.freq} horas
-                        </strong>{" "}
+                        <strong>{it.freq} horas</strong>{" "}
                         durante{" "}
                         <strong>
-                          {it.days} día
-                          {it.days > 1 ? "s" : ""}
+                          {it.days} día{it.days > 1 ? "s" : ""}
                         </strong>
                         {it.total !== "" && (
                           <>
@@ -317,10 +315,7 @@ export default function PrintPrescription() {
                       <>Posología según indicación médica.</>
                     )}
                     {it.indications && (
-                      <>
-                        {" "}
-                        Indicaciones: {it.indications}
-                      </>
+                      <> Indicaciones: {it.indications}</>
                     )}
                   </div>
                 </div>
@@ -347,6 +342,11 @@ export default function PrintPrescription() {
           </div>
         </div>
       ))}
+
+      {/* Footer: timestamp + page X de Y (page numbers via CSS) */}
+      <div className="print-footer">
+        Impreso: {printedAt}
+      </div>
     </div>
   );
 }
