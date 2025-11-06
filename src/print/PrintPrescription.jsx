@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { openDb, exec } from "../db/index.js";
 import doctor from "../config/doctor.json";
+import logo from "../config/FullColor.png";
 
 /** ISO → yyyy-mm-dd */
 function formatYMD(iso) {
@@ -46,7 +47,7 @@ function computeChunkTotal(p, days) {
  * Build copies:
  * - If max duration <= 30: single formula (1 copy)
  * - If > 30: multiple copies in blocks of 30 days
- *   labeled with renewal dates as requested.
+ *   labeled with renewal dates.
  */
 function buildCopies(prescriptions, encounter) {
   if (!prescriptions.length || !encounter?.occurred_at) return [];
@@ -125,7 +126,7 @@ export default function PrintPrescription() {
   const [prescriptions, setPrescriptions] = useState([]);
   const [diagnoses, setDiagnoses] = useState([]);
 
-  // Fixed timestamp for this print job (used in footer)
+  // Fixed timestamp for this print job (footer)
   const [printedAt] = useState(() => formatPrintDateTime(new Date()));
 
   useEffect(() => {
@@ -191,24 +192,26 @@ export default function PrintPrescription() {
             fontSize: "13px",
           }}
         >
-          {/* Header: doctor + title + date */}
+          {/* Doctor header: info left, logo right */}
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "flex-start",
-              marginBottom: "12px",
+              marginBottom: "8px",
             }}
           >
             <div>
-              <div
-                style={{
-                  fontWeight: "bold",
-                  textTransform: "uppercase",
-                }}
-              >
-                {doctor.name}
-              </div>
+              {doctor.name && (
+                <div
+                  style={{
+                    fontWeight: "bold",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {doctor.name}
+                </div>
+              )}
               {doctor.specialty && <div>{doctor.specialty}</div>}
               {doctor.professionalId && (
                 <div>{doctor.professionalId}</div>
@@ -216,23 +219,37 @@ export default function PrintPrescription() {
               {doctor.address && <div>{doctor.address}</div>}
               {doctor.phone && <div>{doctor.phone}</div>}
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div
-                style={{
-                  fontWeight: "bold",
-                  textTransform: "uppercase",
-                }}
-              >
-                FÓRMULA MÉDICA
-              </div>
-              <div>Fecha: {copy.labelDate}</div>
-            </div>
+            {logo && (
+              <img
+                src={logo}
+                alt={doctor.name || "Logo"}
+                style={{ height: "112px", objectFit: "contain" }}
+              />
+            )}
           </div>
 
-          <hr />
+          {/* Title */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              marginBottom: "6px",
+            }}
+          >
+            <h1
+              style={{
+                margin: 0,
+                fontSize: "1.4rem",
+              }}
+            >
+              FÓRMULA MÉDICA
+            </h1>
+            <div>Fecha: {copy.labelDate}</div>
+          </div>
 
-          {/* Patient & encounter info */}
-          <div style={{ marginTop: "6px", marginBottom: "6px" }}>
+          {/* Patient & encounter info BELOW title */}
+          <div style={{ marginTop: "4px", marginBottom: "10px" }}>
             <div>
               <strong>Paciente:</strong>{" "}
               {patient.first_name} {patient.last_name}
@@ -243,17 +260,12 @@ export default function PrintPrescription() {
             </div>
             <div>
               <strong>Teléfono:</strong>{" "}
-              {patient.phone || "-"}
-              {"   "}
+              {patient.phone || "-"}{" "}
               <strong>Género:</strong>{" "}
-              {patient.sex || "-"}
-              {"   "}
+              {patient.sex || "-"}{" "}
               <strong>Fecha nacimiento:</strong>{" "}
               {patient.birth_date || "-"}
             </div>
-          </div>
-
-          <div style={{ marginBottom: "6px" }}>
             <div>
               <strong>Fecha y hora de atención:</strong>{" "}
               {formatYMD(encounter.occurred_at)}
@@ -343,10 +355,13 @@ export default function PrintPrescription() {
         </div>
       ))}
 
-      {/* Footer: timestamp + page X de Y (page numbers via CSS) */}
-      <div className="print-footer">
+      {/* Footer: timestamp only
+      <div
+        className="print-footer"
+        style={{ fontSize: "9px", color: "#444" }}
+      >
         Impreso: {printedAt}
-      </div>
+      </div> */}
     </div>
   );
 }

@@ -31,3 +31,4 @@ Thumbs.db
 *.env
 
 src/config/doctor.json
+src/config/FullColor.png

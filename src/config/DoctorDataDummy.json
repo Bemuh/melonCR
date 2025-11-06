@@ -3,5 +3,6 @@
   "specialty": "Especialista en ...",
   "professionalId": "Registro profesional Nº 000000",
   "phone": "Tel: 000 000 0000",
-  "address": "Dirección del consultorio"
+  "address": "Dirección del consultorio",
+  "logo": "/logo.png"
 }
