@@ -1,4 +1,3 @@
-// src/print/PrintView.jsx
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { openDb, exec } from '../db/index.js';
@@ -9,32 +8,21 @@ export default function PrintView() {
   const [patient, setPatient] = useState(null);
   const [encounters, setEncounters] = useState([]);
 
-  // Load data
   useEffect(() => {
     openDb().then(() => {
       const p = exec(
         `SELECT * FROM patients WHERE id=$id`,
         { $id: patientId }
       )[0];
-
       const e = exec(
         `SELECT * FROM encounters WHERE patient_id=$id ORDER BY occurred_at ASC`,
         { $id: patientId }
       );
-
-      setPatient(p || null);
-      setEncounters(e || []);
+      setPatient(p);
+      setEncounters(e);
+      setTimeout(() => window.print(), 400);
     });
   }, [patientId]);
-
-  // Trigger print once content is ready
-  useEffect(() => {
-    if (!patient) return;
-    const id = setTimeout(() => {
-      window.print();
-    }, 400);
-    return () => clearTimeout(id);
-  }, [patient]);
 
   if (!patient) {
     return (
@@ -47,9 +35,13 @@ export default function PrintView() {
   return (
     <div className="print-page">
       <div style={{ padding: '16px' }}>
-        <h1>Historia Clínica — {patient.first_name} {patient.last_name}</h1>
+        <h1>
+          Historia Clínica — {patient.first_name}{' '}
+          {patient.last_name}
+        </h1>
         <div className="small">
-          Documento: {patient.document_type} {patient.document_number}
+          Documento: {patient.document_type}{' '}
+          {patient.document_number}
         </div>
         <hr />
         {encounters.map(e => (
@@ -61,7 +53,10 @@ export default function PrintView() {
 }
 
 function EncounterBlock({ e }) {
-  const vit = e.vitals_json ? JSON.parse(e.vitals_json) : {};
+  const vit = e.vitals_json
+    ? JSON.parse(e.vitals_json)
+    : {};
+
   const rows = exec(
     `SELECT * FROM diagnoses WHERE encounter_id=$id ORDER BY is_primary DESC`,
     { $id: e.id }
@@ -70,9 +65,15 @@ function EncounterBlock({ e }) {
   const rel = rows.filter(r => !r.is_primary);
 
   return (
-    <div style={{ marginBottom: '14px', pageBreakInside: 'avoid' }}>
+    <div
+      style={{
+        marginBottom: '14px',
+        pageBreakInside: 'avoid',
+      }}
+    >
       <h2>
-        {isoToBogotaText(e.occurred_at)} — {e.cas_code} — {labelType(e.encounter_type)}
+        {isoToBogotaText(e.occurred_at)} — {e.cas_code} —{' '}
+        {labelType(e.encounter_type)}
       </h2>
 
       {e.objective && (
@@ -81,42 +82,76 @@ function EncounterBlock({ e }) {
         </div>
       )}
 
-      <DiagnosticosPrint principal={principal} relacionados={rel} e={e} />
+      <DiagnosticosPrint
+        principal={principal}
+        relacionados={rel}
+        e={e}
+      />
 
       {e.chief_complaint && (
-        <Section title="Motivo de consulta" text={e.chief_complaint} />
+        <Section
+          title="Motivo de consulta"
+          text={e.chief_complaint}
+        />
       )}
       {e.hpi && (
-        <Section title="Enfermedad actual" text={e.hpi} />
+        <Section
+          title="Enfermedad actual"
+          text={e.hpi}
+        />
       )}
       {e.antecedentes && (
-        <Section title="Antecedentes" text={e.antecedentes} />
+        <Section
+          title="Antecedentes"
+          text={e.antecedentes}
+        />
       )}
 
       {vit && (vit.taS || vit.talla) && (
         <Section
           title="Signos vitales"
           text={
-            'TA ' + (vit.taS || '-') + '/' + (vit.taD || '-') +
-            ' FC ' + (vit.fc || '-') +
-            ' FR ' + (vit.fr || '-') +
-            ' Temp ' + (vit.temp || '-') +
-            ' SatO₂ ' + (vit.spo2 || '-') +
-            ' Talla ' + (vit.talla || '-') +
-            ' Peso ' + (vit.peso || '-') +
-            ' IMC ' + (vit.bmi || '-')
+            'TA ' +
+            (vit.taS || '-') +
+            '/' +
+            (vit.taD || '-') +
+            ' FC ' +
+            (vit.fc || '-') +
+            ' FR ' +
+            (vit.fr || '-') +
+            ' Temp ' +
+            (vit.temp || '-') +
+            ' SatO₂ ' +
+            (vit.spo2 || '-') +
+            ' Talla ' +
+            (vit.talla || '-') +
+            ' Peso ' +
+            (vit.peso || '-') +
+            ' IMC ' +
+            (vit.bmi || '-')
           }
         />
       )}
 
       {e.physical_exam && (
-        <Section title="Examen físico" text={e.physical_exam} />
+        <Section
+          title="Examen físico"
+          text={e.physical_exam}
+        />
       )}
+
       {e.plan && (
-        <Section title="Plan / Conducta" text={e.plan} />
+        <Section
+          title="Plan / Conducta"
+          text={e.plan}
+        />
       )}
+
       {e.impression && (
-        <Section title="Análisis" text={e.impression} />
+        <Section
+          title="Análisis"
+          text={e.impression}
+        />
       )}
 
       <Prescriptions encounterId={e.id} />
@@ -138,7 +173,9 @@ function DiagnosticosPrint({ principal, relacionados, e }) {
       <strong>Diagnósticos</strong>
       <div>
         Diagnóstico principal:{' '}
-        {principal ? `${principal.code} ${principal.label}` : '-'}
+        {principal
+          ? `${principal.code} ${principal.label}`
+          : '-'}
       </div>
       <div>
         Relacionado 1:{' '}
@@ -159,8 +196,13 @@ function DiagnosticosPrint({ principal, relacionados, e }) {
           : '-'}
       </div>
       <div>Tipo de diagnóstico: {tipo}</div>
-      <div>Finalidad consulta: {e.finalidad_consulta || '-'}</div>
-      <div>Causa externa: {e.causa_externa || '-'}</div>
+      <div>
+        Finalidad consulta:{' '}
+        {e.finalidad_consulta || '-'}
+      </div>
+      <div>
+        Causa externa: {e.causa_externa || '-'}
+      </div>
     </div>
   );
 }
@@ -169,7 +211,9 @@ function Section({ title, text }) {
   return (
     <div>
       <strong>{title}</strong>
-      <div style={{ whiteSpace: 'pre-wrap' }}>{text}</div>
+      <div style={{ whiteSpace: 'pre-wrap' }}>
+        {text}
+      </div>
     </div>
   );
 }
@@ -186,12 +230,11 @@ function Prescriptions({ encounterId }) {
   const [rows, setRows] = useState([]);
 
   useEffect(() => {
-    setRows(
-      exec(
-        `SELECT * FROM prescriptions WHERE encounter_id=$id`,
-        { $id: encounterId }
-      )
+    const r = exec(
+      `SELECT * FROM prescriptions WHERE encounter_id=$id`,
+      { $id: encounterId }
     );
+    setRows(r);
   }, [encounterId]);
 
   if (!rows.length) return null;
@@ -200,16 +243,41 @@ function Prescriptions({ encounterId }) {
     <div>
       <strong>Fórmula médica</strong>
       <ul>
-        {rows.map(rx => (
-          <li key={rx.id}>
-            {rx.active_ingredient} {rx.presentation || ''}{' '}
-            {rx.concentration || ''} — {rx.dose} {rx.route}{' '}
-            {rx.frequency}{' '}
-            {rx.duration_days
-              ? `(${rx.duration_days} días)`
-              : ''}
-          </li>
-        ))}
+        {rows.map(rx => {
+          const total = rx.quantity_total;
+          const freq = rx.frequency;
+          const days = rx.duration_days;
+
+          const partes = [];
+          if (rx.dose)
+            partes.push(`${rx.dose}`);
+          if (freq)
+            partes.push(`cada ${freq} horas`);
+          if (days)
+            partes.push(
+              `durante ${days} día${Number(days) === 1 ? '' : 's'}`
+            );
+
+          const frase =
+            partes.length > 0
+              ? `Usar ${partes.join(' ')}.`
+              : '';
+
+          return (
+            <li key={rx.id} style={{ marginBottom: 4 }}>
+              <div>
+                <strong>{rx.active_ingredient}</strong>
+              </div>
+              <div>
+                {frase}
+                {total &&
+                  ` Cantidad total: ${total} unidad(es).`}
+                {rx.indications &&
+                  ` Indicaciones: ${rx.indications}`}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -219,12 +287,11 @@ function Procedures({ encounterId }) {
   const [rows, setRows] = useState([]);
 
   useEffect(() => {
-    setRows(
-      exec(
-        `SELECT * FROM procedures WHERE encounter_id=$id`,
-        { $id: encounterId }
-      )
+    const r = exec(
+      `SELECT * FROM procedures WHERE encounter_id=$id`,
+      { $id: encounterId }
     );
+    setRows(r);
   }, [encounterId]);
 
   if (!rows.length) return null;
@@ -235,7 +302,8 @@ function Procedures({ encounterId }) {
       <ul>
         {rows.map(pr => (
           <li key={pr.id}>
-            {pr.name} {pr.code ? `(${pr.code})` : ''} — Sitio{' '}
+            {pr.name}{' '}
+            {pr.code ? `(${pr.code})` : ''} — Sitio{' '}
             {pr.anatomical_site || '-'} — Lote{' '}
             {pr.lot_number || '-'}{' '}
             {pr.consent_obtained

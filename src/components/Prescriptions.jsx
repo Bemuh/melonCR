@@ -1,185 +1,206 @@
 import React, { useEffect, useState } from 'react';
 import { exec, run } from '../db/index.js';
-import { nowIso } from '../utils.js';
 
 export default function Prescriptions({ encounter, onCountChange }) {
   const [list, setList] = useState([]);
   const [rx, setRx] = useState({
-    active_ingredient: '',
-    presentation: '',
-    concentration: '',
-    dose: '',
-    route: 'VO',
-    frequency: '',
+    name: '',
+    dose_per_take: '',
+    freq_hours: '',
     duration_days: '',
-    quantity_total: '',
-    repeats: '',
     indications: '',
-    warnings: '',
   });
 
+  // Load prescriptions for this encounter
   function reload() {
+    if (!encounter?.id) return;
     const rows = exec(
       'SELECT * FROM prescriptions WHERE encounter_id=$id',
       { $id: encounter.id }
     );
     setList(rows);
-    onCountChange?.(rows.length);
+    onCountChange?.(rows.length || 0);
   }
 
   useEffect(() => {
     reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [encounter?.id]);
 
+  // Calculate total quantity: Cantidad por toma * (24 / frecuencia) * duración
+  function computeTotal(dosePerTake, freqHours, durationDays) {
+    const d = parseFloat(String(dosePerTake || '').replace(',', '.'));
+    const f = parseFloat(String(freqHours || '').replace(',', '.'));
+    const days = parseFloat(String(durationDays || '').replace(',', '.'));
+
+    if (!d || !f || !days || f <= 0) return '';
+    const dosesPerDay = 24 / f;
+    if (!isFinite(dosesPerDay) || dosesPerDay <= 0) return '';
+
+    const total = d * dosesPerDay * days;
+    // round to 2 decimals but strip trailing .00
+    const rounded = Math.round(total * 100) / 100;
+    return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+  }
+
   async function add() {
-    if (!rx.active_ingredient) {
-      alert('Principio activo requerido');
+    const {
+      name,
+      dose_per_take,
+      freq_hours,
+      duration_days,
+      indications,
+    } = rx;
+
+    if (!name || !dose_per_take || !freq_hours || !duration_days) {
+      alert(
+        'Nombre, cantidad por toma, frecuencia (horas) y duración (días) son obligatorios.'
+      );
+      return;
+    }
+
+    const quantity_total = computeTotal(
+      dose_per_take,
+      freq_hours,
+      duration_days
+    );
+    if (!quantity_total) {
+      alert(
+        'No se pudo calcular la cantidad total. Verifique la cantidad por toma, la frecuencia (horas) y la duración (días).'
+      );
       return;
     }
 
     await run(
       `INSERT INTO prescriptions (
-        id, encounter_id, active_ingredient, presentation,
-        concentration, dose, route, frequency,
-        duration_days, quantity_total, repeats,
-        indications, warnings, substitution_allowed
+        id,
+        encounter_id,
+        active_ingredient,
+        presentation,
+        concentration,
+        dose,
+        route,
+        frequency,
+        duration_days,
+        quantity_total,
+        repeats,
+        indications,
+        warnings,
+        substitution_allowed
       ) VALUES (
-        $id,$e,$a,$p,
-        $c,$d,$r,$f,
-        $du,$qt,$re,
-        $in,$w,0
+        $id,
+        $encounter_id,
+        $name,
+        '',
+        '',
+        $dose,
+        $route,
+        $freq,
+        $days,
+        $qty,
+        0,
+        $indications,
+        '',
+        0
       )`,
       {
         $id: crypto.randomUUID(),
-        $e: encounter.id,
-        $a: rx.active_ingredient,
-        $p: rx.presentation,
-        $c: rx.concentration,
-        $d: rx.dose,
-        $r: rx.route,
-        $f: rx.frequency,
-        $du: parseInt(rx.duration_days || '0', 10),
-        $qt: rx.quantity_total,
-        $re: parseInt(rx.repeats || '0', 10),
-        $in: rx.indications,
-        $w: rx.warnings,
+        $encounter_id: encounter.id,
+        $name: name,
+        $dose: String(dose_per_take),
+        $route: 'VO',
+        $freq: String(freq_hours),
+        $days: parseInt(duration_days, 10) || 0,
+        $qty: quantity_total,
+        $indications: indications || '',
       }
     );
 
+    // Reset form
     setRx({
-      active_ingredient: '',
-      presentation: '',
-      concentration: '',
-      dose: '',
-      route: 'VO',
-      frequency: '',
+      name: '',
+      dose_per_take: '',
+      freq_hours: '',
       duration_days: '',
-      quantity_total: '',
-      repeats: '',
       indications: '',
-      warnings: '',
     });
 
     reload();
   }
 
   async function del(id) {
-    await run(
-      'DELETE FROM prescriptions WHERE id=$id',
-      { $id: id }
-    );
+    await run('DELETE FROM prescriptions WHERE id=$id', { $id: id });
     reload();
   }
+
+  const previewTotal = computeTotal(
+    rx.dose_per_take,
+    rx.freq_hours,
+    rx.duration_days
+  );
 
   return (
     <div>
       <div className="row">
         <label>
-          Principio activo
+          Nombre
           <input
-            value={rx.active_ingredient}
+            value={rx.name}
             onChange={e =>
-              setRx({ ...rx, active_ingredient: e.target.value })
+              setRx(prev => ({ ...prev, name: e.target.value }))
             }
+            placeholder="Ej: Ibuprofeno 400 mg"
           />
         </label>
+
         <label>
-          Presentación
+          Cantidad por toma
           <input
-            value={rx.presentation}
+            value={rx.dose_per_take}
             onChange={e =>
-              setRx({ ...rx, presentation: e.target.value })
+              setRx(prev => ({
+                ...prev,
+                dose_per_take: e.target.value,
+              }))
             }
+            placeholder="Ej: 1 (tableta, sobre, ml...)"
           />
         </label>
+
         <label>
-          Concentración
+          Frecuencia (horas)
           <input
-            value={rx.concentration}
+            value={rx.freq_hours}
             onChange={e =>
-              setRx({ ...rx, concentration: e.target.value })
+              setRx(prev => ({
+                ...prev,
+                freq_hours: e.target.value,
+              }))
             }
+            placeholder="Ej: 8"
           />
         </label>
-        <label>
-          Dosis
-          <input
-            value={rx.dose}
-            onChange={e =>
-              setRx({ ...rx, dose: e.target.value })
-            }
-          />
-        </label>
-        <label>
-          Vía
-          <select
-            value={rx.route}
-            onChange={e =>
-              setRx({ ...rx, route: e.target.value })
-            }
-          >
-            <option>VO</option>
-            <option>IM</option>
-            <option>IV</option>
-            <option>SC</option>
-            <option>Tópica</option>
-            <option>SL</option>
-          </select>
-        </label>
-        <label>
-          Frecuencia
-          <input
-            value={rx.frequency}
-            onChange={e =>
-              setRx({ ...rx, frequency: e.target.value })
-            }
-          />
-        </label>
+
         <label>
           Duración (días)
           <input
             value={rx.duration_days}
             onChange={e =>
-              setRx({ ...rx, duration_days: e.target.value })
+              setRx(prev => ({
+                ...prev,
+                duration_days: e.target.value,
+              }))
             }
+            placeholder="Ej: 5"
           />
         </label>
+
         <label>
-          Cantidad total
+          Cantidad total (auto)
           <input
-            value={rx.quantity_total}
-            onChange={e =>
-              setRx({ ...rx, quantity_total: e.target.value })
-            }
-          />
-        </label>
-        <label>
-          Repeticiones
-          <input
-            value={rx.repeats}
-            onChange={e =>
-              setRx({ ...rx, repeats: e.target.value })
-            }
+            value={previewTotal || ''}
+            readOnly
+            placeholder="Se calcula automáticamente"
           />
         </label>
       </div>
@@ -189,18 +210,12 @@ export default function Prescriptions({ encounter, onCountChange }) {
         <textarea
           value={rx.indications}
           onChange={e =>
-            setRx({ ...rx, indications: e.target.value })
+            setRx(prev => ({
+              ...prev,
+              indications: e.target.value,
+            }))
           }
-        />
-      </label>
-
-      <label>
-        Advertencias
-        <textarea
-          value={rx.warnings}
-          onChange={e =>
-            setRx({ ...rx, warnings: e.target.value })
-          }
+          placeholder="Instrucciones adicionales para el paciente"
         />
       </label>
 
@@ -209,18 +224,47 @@ export default function Prescriptions({ encounter, onCountChange }) {
       <hr />
 
       <ul>
-        {list.map(it => (
-          <li key={it.id}>
-            {it.active_ingredient} — {it.dose} {it.route}{' '}
-            {it.frequency} ({it.duration_days} días)
-            <button
-              className="ghost"
-              onClick={() => del(it.id)}
-            >
-              Eliminar
-            </button>
-          </li>
-        ))}
+        {list.map(it => {
+          const total = it.quantity_total;
+          const freq = it.frequency;
+          const days = it.duration_days;
+
+          const partes = [];
+          if (it.dose)
+            partes.push(`${it.dose}`);
+          if (freq)
+            partes.push(`cada ${freq} horas`);
+          if (days)
+            partes.push(
+              `durante ${days} día${Number(days) === 1 ? '' : 's'}`
+            );
+
+          const frasePosologia =
+            partes.length > 0
+              ? `Usar ${partes.join(' ')}.`
+              : '';
+
+          return (
+            <li key={it.id} style={{ marginBottom: 8 }}>
+              <div>
+                <strong>{it.active_ingredient}</strong>
+              </div>
+              <div className="small">
+                {frasePosologia && `${frasePosologia} `}
+                {total &&
+                  `Cantidad total sugerida: ${total} unidad(es). `}
+                {it.indications &&
+                  `Indicaciones: ${it.indications}`}
+              </div>
+              <button
+                className="ghost"
+                onClick={() => del(it.id)}
+              >
+                Eliminar
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
