@@ -17,7 +17,6 @@ export default function PrintView() {
     formatPrintDateTime(new Date())
   );
 
-  // Load data and auto-print
   useEffect(() => {
     openDb().then(() => {
       const p =
@@ -34,21 +33,15 @@ export default function PrintView() {
       setPatient(p);
       setEncounters(e || []);
 
-      // Give React a moment to render before invoking print
       setTimeout(() => window.print(), 400);
     });
   }, [patientId]);
 
   // After printing, go back to previous screen
   useEffect(() => {
-    const onAfter = () => {
-      // Navigate back to where the user came from
-      navigate(-1);
-    };
+    const onAfter = () => navigate(-1);
     window.addEventListener("afterprint", onAfter);
-    return () => {
-      window.removeEventListener("afterprint", onAfter);
-    };
+    return () => window.removeEventListener("afterprint", onAfter);
   }, [navigate]);
 
   if (!patient) {
@@ -82,35 +75,24 @@ export default function PrintView() {
                 {doctor.name}
               </div>
             )}
-            {doctor.specialty && (
-              <div>{doctor.specialty}</div>
-            )}
+            {doctor.specialty && <div>{doctor.specialty}</div>}
             {doctor.professionalId && (
               <div>{doctor.professionalId}</div>
             )}
-            {doctor.address && (
-              <div>{doctor.address}</div>
-            )}
-            {doctor.phone && (
-              <div>{doctor.phone}</div>
-            )}
+            {doctor.address && <div>{doctor.address}</div>}
+            {doctor.phone && <div>{doctor.phone}</div>}
           </div>
           {logo && (
             <img
               src={logo}
               alt={doctor.name || "Logo"}
-              style={{
-                height: "112px",
-                objectFit: "contain",
-              }}
+              style={{ height: "112px", objectFit: "contain" }}
             />
           )}
         </div>
 
         {/* Title */}
-        <h1 style={{ marginTop: 0 }}>
-          Historia Clínica
-        </h1>
+        <h1 style={{ marginTop: 0 }}>Historia Clínica</h1>
 
         {/* Patient info below title */}
         <div
@@ -122,8 +104,7 @@ export default function PrintView() {
         >
           <div>
             <strong>Paciente:</strong>{" "}
-            {patient.first_name}{" "}
-            {patient.last_name}
+            {patient.first_name} {patient.last_name}
           </div>
           <div>
             <strong>Documento:</strong>{" "}
@@ -152,19 +133,16 @@ export default function PrintView() {
 
         <hr />
 
-        {/* All encounters */}
+        {/* Encounters in order, sections filtered with data */}
         {encounters.map((e) => (
           <EncounterBlock key={e.id} e={e} />
         ))}
       </div>
 
-      {/* Footer: timestamp only */}
+      {/* Footer: timestamp (page X de Y handled via CSS) */}
       <div
         className="print-footer"
-        style={{
-          fontSize: "9px",
-          color: "#444",
-        }}
+        style={{ fontSize: "9px", color: "#444" }}
       >
         Impreso: {printedAt}
       </div>
@@ -181,12 +159,25 @@ function EncounterBlock({ e }) {
     `SELECT * FROM diagnoses WHERE encounter_id=$id ORDER BY is_primary DESC`,
     { $id: e.id }
   );
-  const principal = rows.find(
-    (r) => r.is_primary === 1
-  );
-  const rel = rows.filter(
-    (r) => !r.is_primary
-  );
+  const principal = rows.find((r) => r.is_primary === 1);
+  const rel = rows.filter((r) => !r.is_primary);
+
+  // Helper: non-empty text
+  const has = (v) => String(v || "").trim().length > 0;
+
+  // Any vitals
+  const hasVitals =
+    vit &&
+    (vit.taS ||
+      vit.taD ||
+      vit.fc ||
+      vit.fr ||
+      vit.temp ||
+      vit.spo2 ||
+      vit.talla ||
+      vit.peso);
+
+  // Any prescriptions / procedures will be handled inside their components
 
   return (
     <div
@@ -201,39 +192,34 @@ function EncounterBlock({ e }) {
         {labelType(e.encounter_type)}
       </h2>
 
-      {e.objective && (
-        <div>
-          <strong>Objetivo:</strong>{" "}
-          {e.objective}
-        </div>
-      )}
+      {/* ORDERED SECTIONS WITH DATA ONLY */}
 
-      <DiagnosticosPrint
-        principal={principal}
-        relacionados={rel}
-        e={e}
-      />
-
-      {e.chief_complaint && (
+      {/* 2. Motivo de consulta */}
+      {has(e.chief_complaint) && (
         <Section
           title="Motivo de consulta"
           text={e.chief_complaint}
         />
       )}
-      {e.hpi && (
+
+      {/* 3. Enfermedad actual */}
+      {has(e.hpi) && (
         <Section
           title="Enfermedad actual"
           text={e.hpi}
         />
       )}
-      {e.antecedentes && (
+
+      {/* 4. Antecedentes */}
+      {has(e.antecedentes) && (
         <Section
           title="Antecedentes"
           text={e.antecedentes}
         />
       )}
 
-      {vit && (vit.taS || vit.talla) && (
+      {/* 5. Signos vitales */}
+      {hasVitals && (
         <Section
           title="Signos vitales"
           text={
@@ -259,38 +245,87 @@ function EncounterBlock({ e }) {
         />
       )}
 
-      {e.physical_exam && (
+      {/* 6. Examen físico */}
+      {has(e.physical_exam) && (
         <Section
           title="Examen físico"
           text={e.physical_exam}
         />
       )}
-      {e.plan && (
-        <Section
-          title="Plan / Conducta"
-          text={e.plan}
-        />
-      )}
-      {e.impression && (
+
+      {/* 7. Análisis */}
+      {has(e.impression) && (
         <Section
           title="Análisis"
           text={e.impression}
         />
       )}
 
+      {/* 8. Plan / Conducta */}
+      {has(e.plan) && (
+        <Section
+          title="Plan / Conducta"
+          text={e.plan}
+        />
+      )}
+
+      {/* 9. Diagnósticos */}
+      <DiagnosticosPrint
+        principal={principal}
+        relacionados={rel}
+        e={e}
+      />
+
+      {/* 10. Fórmula médica */}
       <Prescriptions encounterId={e.id} />
-      <Procedures encounterId={e.id} />
+
+      {/* Procedimientos only if minor_procedure and has rows */}
+      {e.encounter_type === "minor_procedure" && (
+        <Procedures encounterId={e.id} />
+      )}
 
       <hr />
     </div>
   );
 }
 
-function DiagnosticosPrint({
-  principal,
-  relacionados,
-  e,
-}) {
+function DiagnosticosPrint({ principal, relacionados, e }) {
+  const hasPrincipal =
+    principal &&
+    (principal.code || principal.label);
+
+  const hasR1 =
+    relacionados[0] &&
+    (relacionados[0].code ||
+      relacionados[0].label);
+  const hasR2 =
+    relacionados[1] &&
+    (relacionados[1].code ||
+      relacionados[1].label);
+  const hasR3 =
+    relacionados[2] &&
+    (relacionados[2].code ||
+      relacionados[2].label);
+
+  const hasFinalidad = String(
+    e.finalidad_consulta || ""
+  ).trim().length > 0;
+  const hasCausa = String(
+    e.causa_externa || ""
+  ).trim().length > 0;
+
+  // If nothing meaningful, don't render the block
+  if (
+    !hasPrincipal &&
+    !hasR1 &&
+    !hasR2 &&
+    !hasR3 &&
+    !hasFinalidad &&
+    !hasCausa
+  ) {
+    return null;
+  }
+
   const tipo =
     principal?.diagnosis_type ||
     relacionados[0]?.diagnosis_type ||
@@ -299,39 +334,55 @@ function DiagnosticosPrint({
   return (
     <div style={{ margin: "6px 0" }}>
       <strong>Diagnósticos</strong>
-      <div>
-        Diagnóstico principal:{" "}
-        {principal
-          ? `${principal.code} ${principal.label}`
-          : "-"}
-      </div>
-      <div>
-        Relacionado 1:{" "}
-        {relacionados[0]
-          ? `${relacionados[0].code} ${relacionados[0].label}`
-          : "-"}
-      </div>
-      <div>
-        Relacionado 2:{" "}
-        {relacionados[1]
-          ? `${relacionados[1].code} ${relacionados[1].label}`
-          : "-"}
-      </div>
-      <div>
-        Relacionado 3:{" "}
-        {relacionados[2]
-          ? `${relacionados[2].code} ${relacionados[2].label}`
-          : "-"}
-      </div>
-      <div>Tipo de diagnóstico: {tipo}</div>
-      <div>
-        Finalidad consulta:{" "}
-        {e.finalidad_consulta || "-"}
-      </div>
-      <div>
-        Causa externa:{" "}
-        {e.causa_externa || "-"}
-      </div>
+      {hasPrincipal && (
+        <div>
+          Diagnóstico principal:{" "}
+          {principal.code}{" "}
+          {principal.label}
+        </div>
+      )}
+      {hasR1 && (
+        <div>
+          Relacionado 1:{" "}
+          {relacionados[0].code}{" "}
+          {relacionados[0].label}
+        </div>
+      )}
+      {hasR2 && (
+        <div>
+          Relacionado 2:{" "}
+          {relacionados[1].code}{" "}
+          {relacionados[1].label}
+        </div>
+      )}
+      {hasR3 && (
+        <div>
+          Relacionado 3:{" "}
+          {relacionados[2].code}{" "}
+          {relacionados[2].label}
+        </div>
+      )}
+      {(hasPrincipal ||
+        hasR1 ||
+        hasR2 ||
+        hasR3) && (
+        <div>
+          Tipo de diagnóstico:{" "}
+          {tipo}
+        </div>
+      )}
+      {hasFinalidad && (
+        <div>
+          Finalidad consulta:{" "}
+          {e.finalidad_consulta}
+        </div>
+      )}
+      {hasCausa && (
+        <div>
+          Causa externa:{" "}
+          {e.causa_externa}
+        </div>
+      )}
     </div>
   );
 }
@@ -340,11 +391,7 @@ function Section({ title, text }) {
   return (
     <div>
       <strong>{title}</strong>
-      <div
-        style={{
-          whiteSpace: "pre-wrap",
-        }}
-      >
+      <div style={{ whiteSpace: "pre-wrap" }}>
         {text}
       </div>
     </div>
@@ -381,34 +428,23 @@ function Prescriptions({ encounterId }) {
           const freq = rx.frequency;
           const days = rx.duration_days;
 
-          const partes = [];
-          if (rx.dose)
-            partes.push(`${rx.dose}`);
-          if (freq)
-            partes.push(
-              `cada ${freq} horas`
-            );
+          const parts = [];
+          if (rx.dose) parts.push(rx.dose);
+          if (freq) parts.push(`cada ${freq} horas`);
           if (days)
-            partes.push(
+            parts.push(
               `durante ${days} día${
-                Number(days) === 1
-                  ? ""
-                  : "s"
+                Number(days) === 1 ? "" : "s"
               }`
             );
 
           const frase =
-            partes.length > 0
-              ? `Usar ${partes.join(
-                  " "
-                )}.`
+            parts.length > 0
+              ? `Usar ${parts.join(" ")}.`
               : "";
 
           return (
-            <li
-              key={rx.id}
-              style={{ marginBottom: 4 }}
-            >
+            <li key={rx.id} style={{ marginBottom: 4 }}>
               <div>
                 <strong>
                   {rx.active_ingredient}
@@ -444,9 +480,7 @@ function Procedures({ encounterId }) {
 
   return (
     <div>
-      <strong>
-        Procedimientos
-      </strong>
+      <strong>Procedimientos</strong>
       <ul>
         {rows.map((pr) => (
           <li key={pr.id}>

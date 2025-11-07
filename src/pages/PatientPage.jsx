@@ -22,25 +22,19 @@ export default function PatientPage() {
 
   const [patient, setPatient] = useState(null);
   const [encounters, setEncounters] = useState([]);
-  const [activeEncounterId, setActiveEncounterId] =
-    useState(null);
+  const [activeEncounterId, setActiveEncounterId] = useState(null);
   const [encounter, setEncounter] = useState(null);
 
   // counters to mark sections empty/full
-  const [counts, setCounts] = useState({
-    dx: 0,
-    rx: 0,
-    pr: 0,
-  });
+  const [counts, setCounts] = useState({ dx: 0, rx: 0, pr: 0 });
 
   // Load patient + encounters
   useEffect(() => {
     openDb().then(async () => {
       const p =
-        exec(
-          `SELECT * FROM patients WHERE id=$id`,
-          { $id: patientId }
-        )[0] || null;
+        exec(`SELECT * FROM patients WHERE id=$id`, {
+          $id: patientId,
+        })[0] || null;
 
       const e = exec(
         `SELECT * FROM encounters WHERE patient_id=$id ORDER BY occurred_at DESC`,
@@ -63,10 +57,9 @@ export default function PatientPage() {
     if (!activeEncounterId) return;
 
     const e =
-      exec(
-        `SELECT * FROM encounters WHERE id=$id`,
-        { $id: activeEncounterId }
-      )[0] || null;
+      exec(`SELECT * FROM encounters WHERE id=$id`, {
+        $id: activeEncounterId,
+      })[0] || null;
     if (!e) return;
 
     setEncounter(e);
@@ -152,10 +145,9 @@ export default function PatientPage() {
     );
 
     const e =
-      exec(
-        `SELECT * FROM encounters WHERE id=$id`,
-        { $id: id }
-      )[0] || null;
+      exec(`SELECT * FROM encounters WHERE id=$id`, {
+        $id: id,
+      })[0] || null;
 
     if (!e) return;
 
@@ -201,31 +193,19 @@ export default function PatientPage() {
 
   const empties = {
     datos: patientInfoEmpty,
-    motivo: !String(
-      encounter.chief_complaint || ""
-    ).trim(),
-    enfermedad: !String(
-      encounter.hpi || ""
-    ).trim(),
-    antecedentes: !String(
-      encounter.antecedentes || ""
-    ).trim(),
+    motivo: !String(encounter.chief_complaint || "").trim(),
+    enfermedad: !String(encounter.hpi || "").trim(),
+    antecedentes: !String(encounter.antecedentes || "").trim(),
     vitales: vitEmpty,
-    examen: !String(
-      encounter.physical_exam || ""
-    ).trim(),
-    analisis: !String(
-      encounter.impression || ""
-    ).trim(),
-    plan: !String(
-      encounter.plan || ""
-    ).trim(),
+    examen: !String(encounter.physical_exam || "").trim(),
+    analisis: !String(encounter.impression || "").trim(),
+    plan: !String(encounter.plan || "").trim(),
     dx: counts.dx === 0,
     rx: counts.rx === 0,
     pr: counts.pr === 0,
   };
 
-  // key so SectionCards remount when encounter changes
+  // key so that when encounter changes, SectionCards remount and defaultOpen recomputes
   const sectionKey = activeEncounterId;
 
   return (
@@ -235,53 +215,45 @@ export default function PatientPage() {
         <div>
           <div className="kicker">Paciente</div>
           <div>
-            <strong>{fullName(patient)}</strong>{" "}
-            — {patient.document_type}{" "}
+            <strong>{fullName(patient)}</strong> — {patient.document_type}{" "}
             {patient.document_number}
           </div>
         </div>
-        <div className="no-print">
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              justifyContent: "flex-end",
+        <div className="no-print" style={{ display: "flex", gap: "8px" }}>
+          <Link to="/">
+            <button className="ghost">Volver al inicio</button>
+          </Link>
+
+          {/* Historia completa */}
+          <button
+            className="ghost"
+            onClick={() => navigate("/print/" + patient.id)}
+          >
+            Imprimir historia completa
+          </button>
+
+          {/* Fórmula médica solo del encuentro activo */}
+          <button
+            className="ghost"
+            disabled={!activeEncounterId}
+            onClick={() => {
+              if (!activeEncounterId) return;
+              const r = exec(
+                `SELECT COUNT(1) c FROM prescriptions WHERE encounter_id=$id`,
+                { $id: activeEncounterId }
+              );
+              const count = Number(r[0]?.c || 0);
+              if (!count) {
+                alert(
+                  "No hay medicamentos registrados en la fórmula médica para esta atención."
+                );
+                return;
+              }
+              navigate("/rx/" + activeEncounterId);
             }}
           >
-            <Link to="/">
-              <button className="ghost">
-                Volver al inicio
-              </button>
-            </Link>
-
-            {/* Historia clínica completa */}
-            <button
-              className="ghost"
-              onClick={() =>
-                navigate("/print/" + patient.id)
-              }
-            >
-              Imprimir historia completa
-            </button>
-
-            {/* Fórmula médica del encuentro activo */}
-            <button
-              className="ghost"
-              disabled={!activeEncounterId}
-              onClick={() => {
-                if (!activeEncounterId) return;
-                if (counts.rx === 0) {
-                  alert(
-                    "No hay medicamentos registrados en esta atención. Registre la fórmula médica antes de imprimir."
-                  );
-                  return;
-                }
-                navigate("/rx/" + activeEncounterId);
-              }}
-            >
-              Imprimir fórmula médica
-            </button>
-          </div>
+            Imprimir fórmula médica
+          </button>
         </div>
       </div>
 
@@ -295,23 +267,14 @@ export default function PatientPage() {
               onChange={(e) =>
                 e.target.value === "__new__"
                   ? createNewEncounter(patient)
-                  : setActiveEncounterId(
-                      e.target.value
-                    )
+                  : setActiveEncounterId(e.target.value)
               }
             >
-              <option value="__new__">
-                ➕ Nueva atención
-              </option>
+              <option value="__new__">➕ Nueva atención</option>
               {encounters.map((e) => (
-                <option
-                  key={e.id}
-                  value={e.id}
-                >
-                  {isoToBogotaInput(
-                    e.occurred_at
-                  ).replace("T", " ")}{" "}
-                  — {e.cas_code}
+                <option key={e.id} value={e.id}>
+                  {isoToBogotaInput(e.occurred_at).replace("T", " ")} —{" "}
+                  {e.cas_code}
                 </option>
               ))}
             </select>
@@ -325,27 +288,14 @@ export default function PatientPage() {
                 const v = e.target.value;
                 await run(
                   `UPDATE encounters SET encounter_type=$v, updated_at=$ua WHERE id=$id`,
-                  {
-                    $v: v,
-                    $id: encounter.id,
-                    $ua: nowIso(),
-                  }
+                  { $v: v, $id: encounter.id, $ua: nowIso() }
                 );
-                setEncounter({
-                  ...encounter,
-                  encounter_type: v,
-                });
+                setEncounter({ ...encounter, encounter_type: v });
               }}
             >
-              <option value="first_visit">
-                Primera vez / ingreso
-              </option>
-              <option value="follow_up">
-                Control / seguimiento
-              </option>
-              <option value="minor_procedure">
-                Procedimientos menores
-              </option>
+              <option value="first_visit">Primera vez / ingreso</option>
+              <option value="follow_up">Control / seguimiento</option>
+              <option value="minor_procedure">Procedimientos menores</option>
             </select>
           </label>
 
@@ -354,26 +304,14 @@ export default function PatientPage() {
             <input
               type="datetime-local"
               step="60"
-              value={isoToBogotaInput(
-                encounter.occurred_at
-              )}
+              value={isoToBogotaInput(encounter.occurred_at)}
               onChange={async (e) => {
-                const newIso =
-                  bogotaInputToIso(
-                    e.target.value
-                  );
+                const newIso = bogotaInputToIso(e.target.value);
                 await run(
                   `UPDATE encounters SET occurred_at=$v, updated_at=$ua WHERE id=$id`,
-                  {
-                    $v: newIso,
-                    $id: encounter.id,
-                    $ua: nowIso(),
-                  }
+                  { $v: newIso, $id: encounter.id, $ua: nowIso() }
                 );
-                setEncounter({
-                  ...encounter,
-                  occurred_at: newIso,
-                });
+                setEncounter({ ...encounter, occurred_at: newIso });
               }}
             />
           </label>
@@ -381,42 +319,32 @@ export default function PatientPage() {
           <label>
             CAS
             <input
-              defaultValue={
-                encounter.cas_code || ""
-              }
+              defaultValue={encounter.cas_code || ""}
               onBlur={async (e) => {
                 const v = e.target.value;
                 await run(
                   `UPDATE encounters SET cas_code=$v, updated_at=$ua WHERE id=$id`,
-                  {
-                    $v: v,
-                    $id: encounter.id,
-                    $ua: nowIso(),
-                  }
+                  { $v: v, $id: encounter.id, $ua: nowIso() }
                 );
-                setEncounter({
-                  ...encounter,
-                  cas_code: v,
-                });
+                setEncounter({ ...encounter, cas_code: v });
               }}
             />
           </label>
         </div>
       </div>
 
-      {/* Sections (remount on encounter change) */}
+      {/* Sections (remount on encounter change for defaultOpen) */}
       <div key={sectionKey}>
+        {/* 1. Datos del paciente */}
         <SectionCard
           title="Datos del paciente"
           empty={empties.datos}
           defaultOpen={!empties.datos}
         >
-          <PatientFields
-            patient={patient}
-            setPatient={setPatient}
-          />
+          <PatientFields patient={patient} setPatient={setPatient} />
         </SectionCard>
 
+        {/* 2. Motivo de consulta */}
         <SectionCard
           title="Motivo de consulta"
           empty={empties.motivo}
@@ -430,6 +358,7 @@ export default function PatientPage() {
           />
         </SectionCard>
 
+        {/* 3. Enfermedad actual */}
         <SectionCard
           title="Enfermedad actual"
           empty={empties.enfermedad}
@@ -443,6 +372,7 @@ export default function PatientPage() {
           />
         </SectionCard>
 
+        {/* 4. Antecedentes */}
         <SectionCard
           title="Antecedentes"
           empty={empties.antecedentes}
@@ -456,17 +386,16 @@ export default function PatientPage() {
           />
         </SectionCard>
 
+        {/* 5. Signos vitales */}
         <SectionCard
           title="Signos vitales"
           empty={empties.vitales}
           defaultOpen={!empties.vitales}
         >
-          <Vitals
-            encounter={encounter}
-            setEncounter={setEncounter}
-          />
+          <Vitals encounter={encounter} setEncounter={setEncounter} />
         </SectionCard>
 
+        {/* 6. Examen físico */}
         <SectionCard
           title="Examen físico"
           empty={empties.examen}
@@ -480,35 +409,7 @@ export default function PatientPage() {
           />
         </SectionCard>
 
-        <SectionCard
-          title="Diagnósticos (CIE-10)"
-          empty={empties.dx}
-          defaultOpen={!empties.dx}
-        >
-          <Diagnoses
-            encounter={encounter}
-            onCountChange={(n) =>
-              setCounts((c) => ({
-                ...c,
-                dx: n,
-              }))
-            }
-          />
-        </SectionCard>
-
-        <SectionCard
-          title="Plan / Conducta"
-          empty={empties.plan}
-          defaultOpen={!empties.plan}
-        >
-          <TextAreaAuto
-            encounter={encounter}
-            field="plan"
-            label="Plan"
-            setEncounter={setEncounter}
-          />
-        </SectionCard>
-
+        {/* 7. Análisis */}
         <SectionCard
           title="Análisis"
           empty={empties.analisis}
@@ -522,6 +423,35 @@ export default function PatientPage() {
           />
         </SectionCard>
 
+        {/* 8. Plan / Conducta */}
+        <SectionCard
+          title="Plan / Conducta"
+          empty={empties.plan}
+          defaultOpen={!empties.plan}
+        >
+          <TextAreaAuto
+            encounter={encounter}
+            field="plan"
+            label="Plan"
+            setEncounter={setEncounter}
+          />
+        </SectionCard>
+
+        {/* 9. Diagnósticos (CIE-10) */}
+        <SectionCard
+          title="Diagnósticos (CIE-10)"
+          empty={empties.dx}
+          defaultOpen={!empties.dx}
+        >
+          <Diagnoses
+            encounter={encounter}
+            onCountChange={(n) =>
+              setCounts((c) => ({ ...c, dx: n }))
+            }
+          />
+        </SectionCard>
+
+        {/* 10. Fórmula médica */}
         <SectionCard
           title="Fórmula médica"
           empty={empties.rx}
@@ -530,49 +460,38 @@ export default function PatientPage() {
           <Prescriptions
             encounter={encounter}
             onCountChange={(n) =>
-              setCounts((c) => ({
-                ...c,
-                rx: n,
-              }))
+              setCounts((c) => ({ ...c, rx: n }))
             }
           />
         </SectionCard>
 
-        <SectionCard
-          title="Procedimientos"
-          empty={empties.pr}
-          defaultOpen={!empties.pr}
-        >
-          <Procedures
-            encounter={encounter}
-            onCountChange={(n) =>
-              setCounts((c) => ({
-                ...c,
-                pr: n,
-              }))
-            }
-          />
-        </SectionCard>
+        {/* Procedimientos + Adjuntos ONLY for procedimientos menores */}
+        {encounter.encounter_type === "minor_procedure" && (
+          <SectionCard
+            title="Procedimientos"
+            empty={empties.pr}
+            defaultOpen={!empties.pr}
+          >
+            <Procedures
+              encounter={encounter}
+              onCountChange={(n) =>
+                setCounts((c) => ({ ...c, pr: n }))
+              }
+            />
+          </SectionCard>
+        )}
 
-        <SectionCard
-          title="Adjuntos"
-          defaultOpen={false}
-        >
-          <div className="small">
-            Adjuntos — pendiente definir
-            metadatos y carga de archivos.
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="Evoluciones"
-          defaultOpen={false}
-        >
-          <div className="small">
-            Evoluciones — pendiente definir
-            contenido.
-          </div>
-        </SectionCard>
+        {encounter.encounter_type === "minor_procedure" && (
+          <SectionCard
+            title="Adjuntos"
+            defaultOpen={false}
+          >
+            <div className="small">
+              Adjuntos — pendiente definir metadatos y
+              carga de archivos.
+            </div>
+          </SectionCard>
+        )}
       </div>
     </div>
   );
@@ -598,9 +517,7 @@ function SectionCard({
           await persistNow();
         }}
       >
-        <span className="caret">
-          {open ? "▾" : "▸"}
-        </span>
+        <span className="caret">{open ? "▾" : "▸"}</span>
         <h2 className="section-title">
           {title}
           {empty && (
@@ -611,11 +528,7 @@ function SectionCard({
           )}
         </h2>
       </button>
-      {open && (
-        <div className="section-body">
-          {children}
-        </div>
-      )}
+      {open && <div className="section-body">{children}</div>}
     </div>
   );
 }
@@ -631,16 +544,9 @@ function PatientFields({ patient, setPatient }) {
             const v = e.target.value;
             await run(
               `UPDATE patients SET phone=$v, updated_at=$ua WHERE id=$id`,
-              {
-                $v: v,
-                $id: patient.id,
-                $ua: nowIso(),
-              }
+              { $v: v, $id: patient.id, $ua: nowIso() }
             );
-            setPatient({
-              ...patient,
-              phone: v,
-            });
+            setPatient({ ...patient, phone: v });
           }}
         />
       </label>
@@ -652,16 +558,9 @@ function PatientFields({ patient, setPatient }) {
             const v = e.target.value;
             await run(
               `UPDATE patients SET email=$v, updated_at=$ua WHERE id=$id`,
-              {
-                $v: v,
-                $id: patient.id,
-                $ua: nowIso(),
-              }
+              { $v: v, $id: patient.id, $ua: nowIso() }
             );
-            setPatient({
-              ...patient,
-              email: v,
-            });
+            setPatient({ ...patient, email: v });
           }}
         />
       </label>
@@ -673,16 +572,9 @@ function PatientFields({ patient, setPatient }) {
             const v = e.target.value;
             await run(
               `UPDATE patients SET address=$v, updated_at=$ua WHERE id=$id`,
-              {
-                $v: v,
-                $id: patient.id,
-                $ua: nowIso(),
-              }
+              { $v: v, $id: patient.id, $ua: nowIso() }
             );
-            setPatient({
-              ...patient,
-              address: v,
-            });
+            setPatient({ ...patient, address: v });
           }}
         />
       </label>
@@ -694,16 +586,9 @@ function PatientFields({ patient, setPatient }) {
             const v = e.target.value;
             await run(
               `UPDATE patients SET city=$v, updated_at=$ua WHERE id=$id`,
-              {
-                $v: v,
-                $id: patient.id,
-                $ua: nowIso(),
-              }
+              { $v: v, $id: patient.id, $ua: nowIso() }
             );
-            setPatient({
-              ...patient,
-              city: v,
-            });
+            setPatient({ ...patient, city: v });
           }}
         />
       </label>
@@ -711,12 +596,7 @@ function PatientFields({ patient, setPatient }) {
   );
 }
 
-function TextAreaAuto({
-  encounter,
-  setEncounter,
-  field,
-  label,
-}) {
+function TextAreaAuto({ encounter, setEncounter, field, label }) {
   return (
     <label>
       {label}
@@ -726,16 +606,9 @@ function TextAreaAuto({
           const v = e.target.value;
           await run(
             `UPDATE encounters SET ${field}=$v, updated_at=$ua WHERE id=$id`,
-            {
-              $v: v,
-              $id: encounter.id,
-              $ua: nowIso(),
-            }
+            { $v: v, $id: encounter.id, $ua: nowIso() }
           );
-          setEncounter({
-            ...encounter,
-            [field]: v,
-          });
+          setEncounter({ ...encounter, [field]: v });
         }}
       />
     </label>
@@ -743,9 +616,7 @@ function TextAreaAuto({
 }
 
 function Vitals({ encounter, setEncounter }) {
-  const v = encounter.vitals_json
-    ? JSON.parse(encounter.vitals_json)
-    : {};
+  const v = encounter.vitals_json ? JSON.parse(encounter.vitals_json) : {};
   const [state, setState] = useState({
     taS: v.taS || "",
     taD: v.taD || "",
@@ -759,12 +630,8 @@ function Vitals({ encounter, setEncounter }) {
   });
 
   function calcBMI(next) {
-    const talla = Number(
-      next.talla || state.talla || 0
-    );
-    const peso = Number(
-      next.peso || state.peso || 0
-    );
+    const talla = Number(next.talla || state.talla || 0);
+    const peso = Number(next.peso || state.peso || 0);
     return peso && talla
       ? (peso / (talla / 100) ** 2).toFixed(1)
       : "";
@@ -794,11 +661,7 @@ function Vitals({ encounter, setEncounter }) {
         {labelText}
         <input
           defaultValue={state[name]}
-          onBlur={(e) =>
-            save({
-              [name]: e.target.value,
-            })
-          }
+          onBlur={(e) => save({ [name]: e.target.value })}
         />
       </label>
     );
@@ -815,10 +678,7 @@ function Vitals({ encounter, setEncounter }) {
       {field("talla", "Talla (cm)")}
       {field("peso", "Peso (kg)")}
       <div className="small">
-        IMC:{" "}
-        <span className="badge">
-          {state.bmi || "-"}
-        </span>
+        IMC: <span className="badge">{state.bmi || "-"}</span>
       </div>
     </div>
   );
@@ -826,11 +686,7 @@ function Vitals({ encounter, setEncounter }) {
 
 function generateCAS() {
   const k = "cas_seq";
-  const n =
-    parseInt(
-      localStorage.getItem(k) || "0",
-      10
-    ) + 1;
+  const n = parseInt(localStorage.getItem(k) || "0", 10) + 1;
   localStorage.setItem(k, String(n));
   return `CAS-${String(n).padStart(6, "0")}`;
 }

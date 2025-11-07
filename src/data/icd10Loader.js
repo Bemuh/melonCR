@@ -1,13 +1,34 @@
+import data from "/./public/data/icd10.json";
+
 let cache = null;
 
+/**
+ * Load ICD-10 list.
+ * Works in web build and desktop exe (no network fetch).
+ * Exposes items as:
+ *   { code: "A001", label: "Descripción..." }
+ */
 export async function loadICD10() {
   if (cache) return cache;
-  const res = await fetch('/data/icd10.json');
-  if (!res.ok) {
-    console.error('No se pudo cargar icd10.json');
-    cache = [];
-    return cache;
-  }
-  cache = await res.json();
+
+  cache = (data || [])
+    .map((it) => {
+      const rawCode = it.code || it.codigo || "";
+      const rawLabel =
+        it.label ||
+        it.description ||
+        it.nombre ||
+        "";
+      const code = String(rawCode)
+        .replace(".", "")
+        .toUpperCase()
+        .trim();
+      const label = String(rawLabel)
+        .trim();
+      if (!code || !label) return null;
+      return { code, label };
+    })
+    .filter(Boolean);
+
   return cache;
 }
