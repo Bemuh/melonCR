@@ -280,6 +280,7 @@ export default function Diagnoses({
         persistAll={persistAll}
       />
 
+      {/* Tipo de diagnóstico */}
       <div className="diag-grid">
         <div className="diag-title">
           Tipo de Diagnóstico:
@@ -287,60 +288,58 @@ export default function Diagnoses({
         <div>
           <select
             value={dtype}
-            onChange={async (
-              e
-            ) => {
-              const v =
-                e
-                  .target
-                  .value;
+            onChange={async (e) => {
+              const v = e.target.value;
               setDtype(v);
-              await persistAll(
-                {
-                  dtype: v,
-                }
-              );
+              await persistAll({
+                dtype: v,
+              });
             }}
           >
             <option>
-              1 - Impresión
-              Diagnóstica
+              1 - Impresión Diagnóstica
             </option>
             <option>
-              2 - Confirmado
-              Nuevo
+              2 - Confirmado Nuevo
             </option>
             <option>
-              3 - Confirmado
-              Repetido
+              3 - Confirmado Repetido
             </option>
           </select>
         </div>
         <div />
       </div>
 
-      <div className="diag-block">
-        <label>
+      {/* Finalidad de la consulta (RIPS dropdown) */}
+      <div className="diag-grid">
+        <div className="diag-title">
           Finalidad Consulta
-          <textarea
-            value={
-              finalidad
-            }
-            onChange={(e) =>
-              setFinalidad(
-                e
-                  .target
-                  .value
-              )
-            }
-            onBlur={() =>
-              persistAll()
-            }
-            placeholder="Escriba la finalidad de la consulta…"
-          />
-        </label>
+        </div>
+        <div>
+          <select
+            value={finalidad}
+            onChange={async (e) => {
+              const v = e.target.value;
+              setFinalidad(v);
+              await persistAll({
+                finalidad: v,
+              });
+            }}
+          >
+            <option value="">
+              Seleccione finalidad…
+            </option>
+            {FINALIDADES_CONSULTA.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div />
       </div>
 
+      {/* Causa externa */}
       <div className="diag-grid">
         <div className="diag-title">
           Causa Externa
@@ -348,35 +347,25 @@ export default function Diagnoses({
         <div>
           <select
             value={causa}
-            onChange={async (
-              e
-            ) => {
-              const v =
-                e
-                  .target
-                  .value;
+            onChange={async (e) => {
+              const v = e.target.value;
               setCausa(v);
-              await persistAll(
-                {
-                  causa: v,
-                }
-              );
+              await persistAll({
+                causa: v,
+              });
             }}
           >
-            {CAUSAS_EXTERNAS.map(
-              (opt) => (
-                <option
-                  key={opt}
-                  value={
-                    opt
-                  }
-                >
-                  {
-                    opt
-                  }
-                </option>
-              )
-            )}
+            <option value="">
+              Seleccione causa externa…
+            </option>
+            {CAUSAS_EXTERNAS.map((opt) => (
+              <option
+                key={opt}
+                value={opt}
+              >
+                {opt}
+              </option>
+            ))}
           </select>
         </div>
         <div />
@@ -384,14 +373,10 @@ export default function Diagnoses({
 
       <div
         className="row"
-        style={{
-          marginTop: 12,
-        }}
+        style={{ marginTop: 12 }}
       />
       <button
-        onClick={() =>
-          persistAll()
-        }
+        onClick={() => persistAll()}
       >
         Guardar diagnósticos
       </button>
@@ -428,22 +413,17 @@ function DxRow({
         onPick={(it) => {
           const next = {
             code: it.code,
-            label:
-              it.label,
+            label: it.label,
           };
           setState(next);
           persistAll({
-            [kind]:
-              next,
+            [kind]: next,
           });
         }}
-        dataFn={
-          findByCodePrefix
-        }
+        dataFn={findByCodePrefix}
         renderItem={(it) => (
           <>
-            {it.code} —{" "}
-            {it.label}
+            {it.code} — {it.label}
           </>
         )}
       />
@@ -451,9 +431,7 @@ function DxRow({
       {/* Name search */}
       <AutoSuggest
         placeholder="Nombre CIE-10"
-        value={
-          state.label
-        }
+        value={state.label}
         onChange={(v) =>
           setState({
             ...state,
@@ -463,22 +441,17 @@ function DxRow({
         onPick={(it) => {
           const next = {
             code: it.code,
-            label:
-              it.label,
+            label: it.label,
           };
           setState(next);
           persistAll({
-            [kind]:
-              next,
+            [kind]: next,
           });
         }}
-        dataFn={
-          findByNameSubstr
-        }
+        dataFn={findByNameSubstr}
         renderItem={(it) => (
           <>
-            {it.code} —{" "}
-            {it.label}
+            {it.code} — {it.label}
           </>
         )}
       />
@@ -495,17 +468,12 @@ function AutoSuggest({
   renderItem,
   placeholder,
 }) {
-  const [q, setQ] =
-    useState(value ?? "");
-  const [items, setItems] =
-    useState([]);
-  const [open, setOpen] =
-    useState(false);
+  const [q, setQ] = useState(value ?? "");
+  const [items, setItems] = useState([]);
+  const [open, setOpen] = useState(false);
 
-  const inputRef =
-    useRef(null);
-  const focusedRef =
-    useRef(false);
+  const inputRef = useRef(null);
+  const focusedRef = useRef(false);
 
   // Sync from parent when not editing
   useEffect(() => {
@@ -514,28 +482,20 @@ function AutoSuggest({
     }
   }, [value]);
 
-  const recompute =
-    useCallback(
-      (text) => {
-        const next =
-          dataFn(
-            text
-          ) || [];
-        setItems(next);
-        setOpen(
-          focusedRef.current &&
-            next.length >
-              0
-        );
-      },
-      [dataFn]
-    );
+  const recompute = useCallback(
+    (text) => {
+      const next = dataFn(text) || [];
+      setItems(next);
+      setOpen(
+        focusedRef.current &&
+          next.length > 0
+      );
+    },
+    [dataFn]
+  );
 
-  const handleChange = (
-    e
-  ) => {
-    const v =
-      e.target.value;
+  const handleChange = (e) => {
+    const v = e.target.value;
     setQ(v);
     onChange(v);
     recompute(v);
@@ -565,52 +525,29 @@ function AutoSuggest({
       <input
         ref={inputRef}
         value={q}
-        placeholder={
-          placeholder
-        }
-        onChange={
-          handleChange
-        }
-        onFocus={
-          handleFocus
-        }
-        onBlur={
-          handleBlur
-        }
+        placeholder={placeholder}
+        onChange={handleChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
       />
       {open && (
         <ul
           className="suggest"
-          onMouseDown={(
-            e
-          ) =>
+          onMouseDown={(e) =>
             e.preventDefault()
           }
         >
-          {items.map(
-            (
-              it,
-              i
-            ) => (
-              <li
-                key={
-                  i
-                }
-                onMouseDown={(
-                  e
-                ) => {
-                  e.preventDefault();
-                  pick(
-                    it
-                  );
-                }}
-              >
-                {renderItem(
-                  it
-                )}
-              </li>
-            )
-          )}
+          {items.map((it, i) => (
+            <li
+              key={i}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                pick(it);
+              }}
+            >
+              {renderItem(it)}
+            </li>
+          ))}
         </ul>
       )}
     </div>
@@ -618,6 +555,24 @@ function AutoSuggest({
 }
 
 // ====================== CONSTS ======================
+const FINALIDADES_CONSULTA = [
+  "11 - Valoración integral para la promoción y mantenimiento",
+  "12 - Detección temprana de enfermedad general",
+  "13 - Detección temprana de enfermedad laboral",
+  "15 - Diagnóstico",
+  "16 - Tratamiento",
+  "17 - Rehabilitación",
+  "18 - Paliación",
+  "19 - Planificación familiar y anticoncepción",
+  "20 - Promoción y apoyo a la lactancia materna",
+  "21 - Atención básica de orientación familiar",
+  "22 - Atención para el cuidado preconcepcional",
+  "23 - Atención para el cuidado prenatal",
+  "24 - Interrupción Voluntaria del Embarazo",
+  "25 - Atención del parto y puerperio",
+  "26 - Atención para el cuidado del recién nacido",
+];
+
 const CAUSAS_EXTERNAS = [
   "01 – Accidente de trabajo",
   "02 – Accidente de tránsito",
