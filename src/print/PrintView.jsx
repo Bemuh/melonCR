@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { openDb, exec } from "../db/index.js";
 import { isoToBogotaText } from "../utils.js";
 import doctor from "../config/doctor.json";
@@ -7,12 +7,17 @@ import logo from "../config/FullColor.png";
 
 export default function PrintView() {
   const { patientId } = useParams();
+  const navigate = useNavigate();
+
   const [patient, setPatient] = useState(null);
   const [encounters, setEncounters] = useState([]);
 
   // Fixed timestamp for this print job
-  const [printedAt] = useState(() => formatPrintDateTime(new Date()));
+  const [printedAt] = useState(() =>
+    formatPrintDateTime(new Date())
+  );
 
+  // Load data and auto-print
   useEffect(() => {
     openDb().then(() => {
       const p =
@@ -29,9 +34,22 @@ export default function PrintView() {
       setPatient(p);
       setEncounters(e || []);
 
+      // Give React a moment to render before invoking print
       setTimeout(() => window.print(), 400);
     });
   }, [patientId]);
+
+  // After printing, go back to previous screen
+  useEffect(() => {
+    const onAfter = () => {
+      // Navigate back to where the user came from
+      navigate(-1);
+    };
+    window.addEventListener("afterprint", onAfter);
+    return () => {
+      window.removeEventListener("afterprint", onAfter);
+    };
+  }, [navigate]);
 
   if (!patient) {
     return (
@@ -64,26 +82,37 @@ export default function PrintView() {
                 {doctor.name}
               </div>
             )}
-            {doctor.specialty && <div>{doctor.specialty}</div>}
+            {doctor.specialty && (
+              <div>{doctor.specialty}</div>
+            )}
             {doctor.professionalId && (
               <div>{doctor.professionalId}</div>
             )}
-            {doctor.address && <div>{doctor.address}</div>}
-            {doctor.phone && <div>{doctor.phone}</div>}
+            {doctor.address && (
+              <div>{doctor.address}</div>
+            )}
+            {doctor.phone && (
+              <div>{doctor.phone}</div>
+            )}
           </div>
           {logo && (
             <img
               src={logo}
               alt={doctor.name || "Logo"}
-              style={{ height: "112px", objectFit: "contain" }}
+              style={{
+                height: "112px",
+                objectFit: "contain",
+              }}
             />
           )}
         </div>
 
         {/* Title */}
-        <h1 style={{ marginTop: 0 }}>Historia Clínica</h1>
+        <h1 style={{ marginTop: 0 }}>
+          Historia Clínica
+        </h1>
 
-        {/* Patient info BELOW title */}
+        {/* Patient info below title */}
         <div
           style={{
             marginTop: "4px",
@@ -93,20 +122,24 @@ export default function PrintView() {
         >
           <div>
             <strong>Paciente:</strong>{" "}
-            {patient.first_name} {patient.last_name}
+            {patient.first_name}{" "}
+            {patient.last_name}
           </div>
           <div>
             <strong>Documento:</strong>{" "}
-            {patient.document_type} {patient.document_number}
+            {patient.document_type}{" "}
+            {patient.document_number}
           </div>
           {patient.phone && (
             <div>
-              <strong>Teléfono:</strong> {patient.phone}
+              <strong>Teléfono:</strong>{" "}
+              {patient.phone}
             </div>
           )}
           {patient.sex && (
             <div>
-              <strong>Género:</strong> {patient.sex}
+              <strong>Género:</strong>{" "}
+              {patient.sex}
             </div>
           )}
           {patient.birth_date && (
@@ -128,7 +161,10 @@ export default function PrintView() {
       {/* Footer: timestamp only */}
       <div
         className="print-footer"
-        style={{ fontSize: "9px", color: "#444" }}
+        style={{
+          fontSize: "9px",
+          color: "#444",
+        }}
       >
         Impreso: {printedAt}
       </div>
@@ -137,14 +173,20 @@ export default function PrintView() {
 }
 
 function EncounterBlock({ e }) {
-  const vit = e.vitals_json ? JSON.parse(e.vitals_json) : {};
+  const vit = e.vitals_json
+    ? JSON.parse(e.vitals_json)
+    : {};
 
   const rows = exec(
     `SELECT * FROM diagnoses WHERE encounter_id=$id ORDER BY is_primary DESC`,
     { $id: e.id }
   );
-  const principal = rows.find((r) => r.is_primary === 1);
-  const rel = rows.filter((r) => !r.is_primary);
+  const principal = rows.find(
+    (r) => r.is_primary === 1
+  );
+  const rel = rows.filter(
+    (r) => !r.is_primary
+  );
 
   return (
     <div
@@ -154,13 +196,15 @@ function EncounterBlock({ e }) {
       }}
     >
       <h2>
-        {isoToBogotaText(e.occurred_at)} — {e.cas_code} —{" "}
+        {isoToBogotaText(e.occurred_at)} —{" "}
+        {e.cas_code} —{" "}
         {labelType(e.encounter_type)}
       </h2>
 
       {e.objective && (
         <div>
-          <strong>Objetivo:</strong> {e.objective}
+          <strong>Objetivo:</strong>{" "}
+          {e.objective}
         </div>
       )}
 
@@ -242,7 +286,11 @@ function EncounterBlock({ e }) {
   );
 }
 
-function DiagnosticosPrint({ principal, relacionados, e }) {
+function DiagnosticosPrint({
+  principal,
+  relacionados,
+  e,
+}) {
   const tipo =
     principal?.diagnosis_type ||
     relacionados[0]?.diagnosis_type ||
@@ -281,7 +329,8 @@ function DiagnosticosPrint({ principal, relacionados, e }) {
         {e.finalidad_consulta || "-"}
       </div>
       <div>
-        Causa externa: {e.causa_externa || "-"}
+        Causa externa:{" "}
+        {e.causa_externa || "-"}
       </div>
     </div>
   );
@@ -291,7 +340,13 @@ function Section({ title, text }) {
   return (
     <div>
       <strong>{title}</strong>
-      <div style={{ whiteSpace: "pre-wrap" }}>{text}</div>
+      <div
+        style={{
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {text}
+      </div>
     </div>
   );
 }
@@ -327,25 +382,37 @@ function Prescriptions({ encounterId }) {
           const days = rx.duration_days;
 
           const partes = [];
-          if (rx.dose) partes.push(`${rx.dose}`);
+          if (rx.dose)
+            partes.push(`${rx.dose}`);
           if (freq)
-            partes.push(`cada ${freq} horas`);
+            partes.push(
+              `cada ${freq} horas`
+            );
           if (days)
             partes.push(
               `durante ${days} día${
-                Number(days) === 1 ? "" : "s"
+                Number(days) === 1
+                  ? ""
+                  : "s"
               }`
             );
 
           const frase =
             partes.length > 0
-              ? `Usar ${partes.join(" ")}.`
+              ? `Usar ${partes.join(
+                  " "
+                )}.`
               : "";
 
           return (
-            <li key={rx.id} style={{ marginBottom: 4 }}>
+            <li
+              key={rx.id}
+              style={{ marginBottom: 4 }}
+            >
               <div>
-                <strong>{rx.active_ingredient}</strong>
+                <strong>
+                  {rx.active_ingredient}
+                </strong>
               </div>
               <div>
                 {frase}
@@ -377,14 +444,22 @@ function Procedures({ encounterId }) {
 
   return (
     <div>
-      <strong>Procedimientos</strong>
+      <strong>
+        Procedimientos
+      </strong>
       <ul>
         {rows.map((pr) => (
           <li key={pr.id}>
             {pr.name}{" "}
-            {pr.code ? `(${pr.code})` : ""} — Sitio{" "}
-            {pr.anatomical_site || "-"} — Lote{" "}
-            {pr.lot_number || "-"}{" "}
+            {pr.code
+              ? `(${pr.code})`
+              : ""}{" "}
+            — Sitio{" "}
+            {pr.anatomical_site ||
+              "-"}{" "}
+            — Lote{" "}
+            {pr.lot_number ||
+              "-"}{" "}
             {pr.consent_obtained
               ? "(consentimiento: Sí)"
               : "(consentimiento: No)"}
@@ -397,7 +472,8 @@ function Procedures({ encounterId }) {
 
 /** dd-mm-yyyy hh:mm:ss */
 function formatPrintDateTime(d) {
-  const pad = (n) => String(n).padStart(2, "0");
+  const pad = (n) =>
+    String(n).padStart(2, "0");
   const dd = pad(d.getDate());
   const mm = pad(d.getMonth() + 1);
   const yyyy = d.getFullYear();
