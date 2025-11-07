@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { openDb, exec } from "../db/index.js";
 import { isoToBogotaText } from "../utils.js";
@@ -13,10 +13,13 @@ export default function PrintView() {
   const [encounters, setEncounters] = useState([]);
 
   // Fixed timestamp for this print job
-  const [printedAt] = useState(() =>
-    formatPrintDateTime(new Date())
-  );
+  const [printedAt] = useState(() => formatPrintDateTime(new Date()));
 
+  // Track print lifecycle to support browser + desktop exe
+  const printingStartedRef = useRef(false);
+  const navigatedRef = useRef(false);
+
+  // Load data and trigger print
   useEffect(() => {
     openDb().then(() => {
       const p =
@@ -33,15 +36,71 @@ export default function PrintView() {
       setPatient(p);
       setEncounters(e || []);
 
-      setTimeout(() => window.print(), 400);
+      // Give React a moment to render before invoking print
+      setTimeout(() => {
+        printingStartedRef.current = true;
+        window.print();
+      }, 400);
     });
   }, [patientId]);
 
-  // After printing, go back to previous screen
+  // After printing (or closing dialog), navigate back once
   useEffect(() => {
-    const onAfter = () => navigate(-1);
-    window.addEventListener("afterprint", onAfter);
-    return () => window.removeEventListener("afterprint", onAfter);
+    const goBackOnce = () => {
+      if (navigatedRef.current) return;
+      navigatedRef.current = true;
+      navigate(-1);
+    };
+
+    const handleAfterPrint = () => {
+      if (printingStartedRef.current) {
+        goBackOnce();
+      }
+    };
+
+    // Some environments fire this reliably
+    window.addEventListener("afterprint", handleAfterPrint);
+
+    // Fallback: matchMedia(print)
+    const mql = window.matchMedia
+      ? window.matchMedia("print")
+      : null;
+
+    const handleMediaChange = (e) => {
+      // when e.matches goes from true -> false, printing ended
+      if (printingStartedRef.current && !e.matches) {
+        goBackOnce();
+      }
+    };
+
+    if (mql) {
+      if (mql.addEventListener) {
+        mql.addEventListener("change", handleMediaChange);
+      } else if (mql.addListener) {
+        // older API
+        mql.addListener(handleMediaChange);
+      }
+    }
+
+    // Extra fallback: when window regains focus after starting print
+    const handleFocus = () => {
+      if (printingStartedRef.current && !navigatedRef.current) {
+        goBackOnce();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("afterprint", handleAfterPrint);
+      window.removeEventListener("focus", handleFocus);
+      if (mql) {
+        if (mql.removeEventListener) {
+          mql.removeEventListener("change", handleMediaChange);
+        } else if (mql.removeListener) {
+          mql.removeListener(handleMediaChange);
+        }
+      }
+    };
   }, [navigate]);
 
   if (!patient) {
@@ -108,19 +167,16 @@ export default function PrintView() {
           </div>
           <div>
             <strong>Documento:</strong>{" "}
-            {patient.document_type}{" "}
-            {patient.document_number}
+            {patient.document_type} {patient.document_number}
           </div>
           {patient.phone && (
             <div>
-              <strong>Teléfono:</strong>{" "}
-              {patient.phone}
+              <strong>Teléfono:</strong> {patient.phone}
             </div>
           )}
           {patient.sex && (
             <div>
-              <strong>Género:</strong>{" "}
-              {patient.sex}
+              <strong>Género:</strong> {patient.sex}
             </div>
           )}
           {patient.birth_date && (
@@ -133,17 +189,14 @@ export default function PrintView() {
 
         <hr />
 
-        {/* Encounters in order, sections filtered with data */}
+        {/* All encounters */}
         {encounters.map((e) => (
           <EncounterBlock key={e.id} e={e} />
         ))}
       </div>
 
-      {/* Footer: timestamp (page X de Y handled via CSS) */}
-      <div
-        className="print-footer"
-        style={{ fontSize: "9px", color: "#444" }}
-      >
+      {/* Footer: timestamp only (page X/Y handled via CSS counters) */}
+      <div className="print-footer" style={{ fontSize: "9px", color: "#444" }}>
         Impreso: {printedAt}
       </div>
     </div>
@@ -151,9 +204,7 @@ export default function PrintView() {
 }
 
 function EncounterBlock({ e }) {
-  const vit = e.vitals_json
-    ? JSON.parse(e.vitals_json)
-    : {};
+  const vit = e.vitals_json ? JSON.parse(e.vitals_json) : {};
 
   const rows = exec(
     `SELECT * FROM diagnoses WHERE encounter_id=$id ORDER BY is_primary DESC`,
@@ -162,22 +213,21 @@ function EncounterBlock({ e }) {
   const principal = rows.find((r) => r.is_primary === 1);
   const rel = rows.filter((r) => !r.is_primary);
 
-  // Helper: non-empty text
-  const has = (v) => String(v || "").trim().length > 0;
+  const hasDx =
+    (principal && principal.code && principal.label) ||
+    rel.some((r) => r.code && r.label);
 
-  // Any vitals
-  const hasVitals =
-    vit &&
-    (vit.taS ||
-      vit.taD ||
-      vit.fc ||
-      vit.fr ||
-      vit.temp ||
-      vit.spo2 ||
-      vit.talla ||
-      vit.peso);
+  const hasRx =
+    exec(
+      `SELECT COUNT(1) c FROM prescriptions WHERE encounter_id=$id`,
+      { $id: e.id }
+    )[0]?.c > 0;
 
-  // Any prescriptions / procedures will be handled inside their components
+  const hasPr =
+    exec(
+      `SELECT COUNT(1) c FROM procedures WHERE encounter_id=$id`,
+      { $id: e.id }
+    )[0]?.c > 0;
 
   return (
     <div
@@ -187,39 +237,32 @@ function EncounterBlock({ e }) {
       }}
     >
       <h2>
-        {isoToBogotaText(e.occurred_at)} —{" "}
-        {e.cas_code} —{" "}
+        {isoToBogotaText(e.occurred_at)} — {e.cas_code} —{" "}
         {labelType(e.encounter_type)}
       </h2>
 
-      {/* ORDERED SECTIONS WITH DATA ONLY */}
-
-      {/* 2. Motivo de consulta */}
-      {has(e.chief_complaint) && (
+      {e.chief_complaint && (
         <Section
           title="Motivo de consulta"
           text={e.chief_complaint}
         />
       )}
 
-      {/* 3. Enfermedad actual */}
-      {has(e.hpi) && (
+      {e.hpi && (
         <Section
           title="Enfermedad actual"
           text={e.hpi}
         />
       )}
 
-      {/* 4. Antecedentes */}
-      {has(e.antecedentes) && (
+      {e.antecedentes && (
         <Section
           title="Antecedentes"
           text={e.antecedentes}
         />
       )}
 
-      {/* 5. Signos vitales */}
-      {hasVitals && (
+      {vit && (vit.taS || vit.taD || vit.fc || vit.fr || vit.temp || vit.spo2 || vit.talla || vit.peso || vit.bmi) && (
         <Section
           title="Signos vitales"
           text={
@@ -245,42 +288,38 @@ function EncounterBlock({ e }) {
         />
       )}
 
-      {/* 6. Examen físico */}
-      {has(e.physical_exam) && (
+      {e.physical_exam && (
         <Section
           title="Examen físico"
           text={e.physical_exam}
         />
       )}
 
-      {/* 7. Análisis */}
-      {has(e.impression) && (
+      {e.impression && (
         <Section
           title="Análisis"
           text={e.impression}
         />
       )}
 
-      {/* 8. Plan / Conducta */}
-      {has(e.plan) && (
+      {e.plan && (
         <Section
           title="Plan / Conducta"
           text={e.plan}
         />
       )}
 
-      {/* 9. Diagnósticos */}
-      <DiagnosticosPrint
-        principal={principal}
-        relacionados={rel}
-        e={e}
-      />
+      {hasDx && (
+        <DiagnosticosPrint
+          principal={principal}
+          relacionados={rel}
+          e={e}
+        />
+      )}
 
-      {/* 10. Fórmula médica */}
-      <Prescriptions encounterId={e.id} />
+      {hasRx && <Prescriptions encounterId={e.id} />}
 
-      {/* Procedimientos only if minor_procedure and has rows */}
-      {e.encounter_type === "minor_procedure" && (
+      {hasPr && e.encounter_type === "minor_procedure" && (
         <Procedures encounterId={e.id} />
       )}
 
@@ -290,110 +329,60 @@ function EncounterBlock({ e }) {
 }
 
 function DiagnosticosPrint({ principal, relacionados, e }) {
-  const hasPrincipal =
-    principal &&
-    (principal.code || principal.label);
+  const tipo =
+    principal?.diagnosis_type ||
+    relacionados[0]?.diagnosis_type ||
+    "";
 
-  const hasR1 =
-    relacionados[0] &&
-    (relacionados[0].code ||
-      relacionados[0].label);
-  const hasR2 =
-    relacionados[1] &&
-    (relacionados[1].code ||
-      relacionados[1].label);
-  const hasR3 =
-    relacionados[2] &&
-    (relacionados[2].code ||
-      relacionados[2].label);
-
-  const hasFinalidad = String(
-    e.finalidad_consulta || ""
-  ).trim().length > 0;
-  const hasCausa = String(
-    e.causa_externa || ""
-  ).trim().length > 0;
-
-  // If nothing meaningful, don't render the block
   if (
-    !hasPrincipal &&
-    !hasR1 &&
-    !hasR2 &&
-    !hasR3 &&
-    !hasFinalidad &&
-    !hasCausa
+    !principal &&
+    !relacionados.some((r) => r.code && r.label) &&
+    !e.finalidad_consulta &&
+    !e.causa_externa
   ) {
     return null;
   }
 
-  const tipo =
-    principal?.diagnosis_type ||
-    relacionados[0]?.diagnosis_type ||
-    "-";
-
   return (
     <div style={{ margin: "6px 0" }}>
       <strong>Diagnósticos</strong>
-      {hasPrincipal && (
+      {principal && principal.code && principal.label && (
         <div>
-          Diagnóstico principal:{" "}
-          {principal.code}{" "}
-          {principal.label}
+          Diagnóstico principal: {principal.code} {principal.label}
         </div>
       )}
-      {hasR1 && (
+      {relacionados[0] && relacionados[0].code && relacionados[0].label && (
         <div>
-          Relacionado 1:{" "}
-          {relacionados[0].code}{" "}
-          {relacionados[0].label}
+          Relacionado 1: {relacionados[0].code} {relacionados[0].label}
         </div>
       )}
-      {hasR2 && (
+      {relacionados[1] && relacionados[1].code && relacionados[1].label && (
         <div>
-          Relacionado 2:{" "}
-          {relacionados[1].code}{" "}
-          {relacionados[1].label}
+          Relacionado 2: {relacionados[1].code} {relacionados[1].label}
         </div>
       )}
-      {hasR3 && (
+      {relacionados[2] && relacionados[2].code && relacionados[2].label && (
         <div>
-          Relacionado 3:{" "}
-          {relacionados[2].code}{" "}
-          {relacionados[2].label}
+          Relacionado 3: {relacionados[2].code} {relacionados[2].label}
         </div>
       )}
-      {(hasPrincipal ||
-        hasR1 ||
-        hasR2 ||
-        hasR3) && (
-        <div>
-          Tipo de diagnóstico:{" "}
-          {tipo}
-        </div>
+      {tipo && <div>Tipo de diagnóstico: {tipo}</div>}
+      {e.finalidad_consulta && (
+        <div>Finalidad consulta: {e.finalidad_consulta}</div>
       )}
-      {hasFinalidad && (
-        <div>
-          Finalidad consulta:{" "}
-          {e.finalidad_consulta}
-        </div>
-      )}
-      {hasCausa && (
-        <div>
-          Causa externa:{" "}
-          {e.causa_externa}
-        </div>
+      {e.causa_externa && (
+        <div>Causa externa: {e.causa_externa}</div>
       )}
     </div>
   );
 }
 
 function Section({ title, text }) {
+  if (!String(text || "").trim()) return null;
   return (
     <div>
       <strong>{title}</strong>
-      <div style={{ whiteSpace: "pre-wrap" }}>
-        {text}
-      </div>
+      <div style={{ whiteSpace: "pre-wrap" }}>{text}</div>
     </div>
   );
 }
@@ -428,27 +417,25 @@ function Prescriptions({ encounterId }) {
           const freq = rx.frequency;
           const days = rx.duration_days;
 
-          const parts = [];
-          if (rx.dose) parts.push(rx.dose);
-          if (freq) parts.push(`cada ${freq} horas`);
+          const partes = [];
+          if (rx.dose) partes.push(`${rx.dose}`);
+          if (freq) partes.push(`cada ${freq} horas`);
           if (days)
-            parts.push(
+            partes.push(
               `durante ${days} día${
                 Number(days) === 1 ? "" : "s"
               }`
             );
 
           const frase =
-            parts.length > 0
-              ? `Usar ${parts.join(" ")}.`
+            partes.length > 0
+              ? `Usar ${partes.join(" ")}.`
               : "";
 
           return (
             <li key={rx.id} style={{ marginBottom: 4 }}>
               <div>
-                <strong>
-                  {rx.active_ingredient}
-                </strong>
+                <strong>{rx.active_ingredient}</strong>
               </div>
               <div>
                 {frase}
@@ -484,16 +471,9 @@ function Procedures({ encounterId }) {
       <ul>
         {rows.map((pr) => (
           <li key={pr.id}>
-            {pr.name}{" "}
-            {pr.code
-              ? `(${pr.code})`
-              : ""}{" "}
-            — Sitio{" "}
-            {pr.anatomical_site ||
-              "-"}{" "}
-            — Lote{" "}
-            {pr.lot_number ||
-              "-"}{" "}
+            {pr.name} {pr.code ? `(${pr.code})` : ""} — Sitio{" "}
+            {pr.anatomical_site || "-"} — Lote{" "}
+            {pr.lot_number || "-"}{" "}
             {pr.consent_obtained
               ? "(consentimiento: Sí)"
               : "(consentimiento: No)"}
@@ -506,8 +486,7 @@ function Procedures({ encounterId }) {
 
 /** dd-mm-yyyy hh:mm:ss */
 function formatPrintDateTime(d) {
-  const pad = (n) =>
-    String(n).padStart(2, "0");
+  const pad = (n) => String(n).padStart(2, "0");
   const dd = pad(d.getDate());
   const mm = pad(d.getMonth() + 1);
   const yyyy = d.getFullYear();

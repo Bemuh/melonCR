@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { openDb, exec } from "../db/index.js";
 import doctor from "../config/doctor.json";
@@ -10,7 +10,7 @@ function formatYMD(iso) {
   return String(iso).slice(0, 10);
 }
 
-/** dd-mm-yyyy hh:mm:ss for footer */
+/** dd-mm-yyyy hh:mm:ss for footer (if needed later) */
 function formatPrintDateTime(d) {
   const pad = (n) => String(n).padStart(2, "0");
   const dd = pad(d.getDate());
@@ -126,8 +126,9 @@ export default function PrintPrescription() {
   const [prescriptions, setPrescriptions] = useState([]);
   const [diagnoses, setDiagnoses] = useState([]);
 
-  // Fixed timestamp for this print job (footer)
-  const [printedAt] = useState(() => formatPrintDateTime(new Date()));
+  // Track print lifecycle
+  const printingStartedRef = useRef(false);
+  const navigatedRef = useRef(false);
 
   useEffect(() => {
     openDb().then(() => {
@@ -159,14 +160,67 @@ export default function PrintPrescription() {
       setPrescriptions(rx || []);
       setDiagnoses(dx || []);
 
-      setTimeout(() => window.print(), 400);
+      // Auto-print once content is ready
+      setTimeout(() => {
+        printingStartedRef.current = true;
+        window.print();
+      }, 400);
     });
   }, [encounterId]);
 
   useEffect(() => {
-    const onAfter = () => navigate(-1);
-    window.addEventListener("afterprint", onAfter);
-    return () => window.removeEventListener("afterprint", onAfter);
+    const goBackOnce = () => {
+      if (navigatedRef.current) return;
+      navigatedRef.current = true;
+      navigate(-1);
+    };
+
+    const handleAfterPrint = () => {
+      if (printingStartedRef.current) {
+        goBackOnce();
+      }
+    };
+
+    window.addEventListener("afterprint", handleAfterPrint);
+
+    // Fallback: matchMedia("print")
+    const mql = window.matchMedia
+      ? window.matchMedia("print")
+      : null;
+
+    const handleMediaChange = (e) => {
+      if (printingStartedRef.current && !e.matches) {
+        goBackOnce();
+      }
+    };
+
+    if (mql) {
+      if (mql.addEventListener) {
+        mql.addEventListener("change", handleMediaChange);
+      } else if (mql.addListener) {
+        mql.addListener(handleMediaChange);
+      }
+    }
+
+    // Fallback: focus after print dialog
+    const handleFocus = () => {
+      if (printingStartedRef.current && !navigatedRef.current) {
+        goBackOnce();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("afterprint", handleAfterPrint);
+      window.removeEventListener("focus", handleFocus);
+      if (mql) {
+        if (mql.removeEventListener) {
+          mql.removeEventListener("change", handleMediaChange);
+        } else if (mql.removeListener) {
+          mql.removeListener(handleMediaChange);
+        }
+      }
+    };
   }, [navigate]);
 
   if (!encounter || !patient) {
@@ -188,7 +242,8 @@ export default function PrintPrescription() {
           key={idx}
           style={{
             padding: "16px",
-            pageBreakAfter: idx === copies.length - 1 ? "auto" : "always",
+            pageBreakAfter:
+              idx === copies.length - 1 ? "auto" : "always",
             fontSize: "13px",
           }}
         >
@@ -248,15 +303,21 @@ export default function PrintPrescription() {
             <div>Fecha: {copy.labelDate}</div>
           </div>
 
-          {/* Patient & encounter info BELOW title */}
-          <div style={{ marginTop: "4px", marginBottom: "10px" }}>
+          {/* Patient & encounter info */}
+          <div
+            style={{
+              marginTop: "4px",
+              marginBottom: "10px",
+            }}
+          >
             <div>
               <strong>Paciente:</strong>{" "}
               {patient.first_name} {patient.last_name}
             </div>
             <div>
               <strong>Documento:</strong>{" "}
-              {patient.document_type} {patient.document_number}
+              {patient.document_type}{" "}
+              {patient.document_number}
             </div>
             <div>
               <strong>Teléfono:</strong>{" "}
@@ -277,7 +338,8 @@ export default function PrintPrescription() {
             {principalDx && (
               <div>
                 <strong>Diagnóstico principal:</strong>{" "}
-                {principalDx.code} {principalDx.label}
+                {principalDx.code}{" "}
+                {principalDx.label}
               </div>
             )}
           </div>
@@ -287,7 +349,10 @@ export default function PrintPrescription() {
           {/* Prescription body */}
           {copy.items.length === 0 ? (
             <div style={{ marginTop: "12px" }}>
-              <em>No hay medicamentos registrados para esta fórmula.</em>
+              <em>
+                No hay medicamentos registrados para esta
+                fórmula.
+              </em>
             </div>
           ) : (
             <div style={{ marginTop: "10px" }}>
@@ -301,7 +366,8 @@ export default function PrintPrescription() {
                 >
                   <div>
                     <strong>{it.name}</strong>{" "}
-                    {it.total !== "" && `(# ${it.total})`}
+                    {it.total !== "" &&
+                      `(# ${it.total})`}
                   </div>
                   <div>
                     {it.dose && it.freq && it.days ? (
@@ -309,22 +375,31 @@ export default function PrintPrescription() {
                         Usar{" "}
                         <strong>{it.dose}</strong>{" "}
                         cada{" "}
-                        <strong>{it.freq} horas</strong>{" "}
+                        <strong>
+                          {it.freq} horas
+                        </strong>{" "}
                         durante{" "}
                         <strong>
-                          {it.days} día{it.days > 1 ? "s" : ""}
+                          {it.days} día
+                          {it.days > 1 ? "s" : ""}
                         </strong>
                         {it.total !== "" && (
                           <>
                             {" "}
-                            — cantidad total estimada:{" "}
-                            <strong>{it.total}</strong>
+                            — cantidad total
+                            estimada:{" "}
+                            <strong>
+                              {it.total}
+                            </strong>
                           </>
                         )}
                         .
                       </>
                     ) : (
-                      <>Posología según indicación médica.</>
+                      <>
+                        Posología según indicación
+                        médica.
+                      </>
                     )}
                     {it.indications && (
                       <> Indicaciones: {it.indications}</>
@@ -336,8 +411,12 @@ export default function PrintPrescription() {
           )}
 
           <div style={{ marginTop: "24px" }}>
-            <div>______________________________</div>
-            <div>Firma y sello del profesional</div>
+            <div>
+              ______________________________
+            </div>
+            <div>
+              Firma y sello del profesional
+            </div>
           </div>
 
           <div
@@ -347,14 +426,13 @@ export default function PrintPrescription() {
               color: "#555",
             }}
           >
-            Esta fórmula es válida únicamente con firma del
-            profesional tratante. Cada copia corresponde al
-            período de tratamiento indicado para renovación de la
-            medicación.
+            Esta fórmula es válida únicamente con firma
+            del profesional tratante. Cada copia
+            corresponde al período de tratamiento
+            indicado para renovación de la medicación.
           </div>
         </div>
       ))}
-
     </div>
   );
 }
