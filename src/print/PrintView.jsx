@@ -13,18 +13,15 @@ export default function PrintView() {
   const [encounters, setEncounters] = useState([]);
 
   // Fixed timestamp for this print job
-  const [printedAt] = useState(() =>
-    formatPrintDateTime(new Date())
-  );
+  const [printedAt] = useState(() => formatPrintDateTime(new Date()));
 
   // Load data and auto-print
   useEffect(() => {
     openDb().then(() => {
       const p =
-        exec(
-          `SELECT * FROM patients WHERE id=$id`,
-          { $id: patientId }
-        )[0] || null;
+        exec(`SELECT * FROM patients WHERE id=$id`, {
+          $id: patientId,
+        })[0] || null;
 
       const e = exec(
         `SELECT * FROM encounters WHERE patient_id=$id ORDER BY occurred_at ASC`,
@@ -61,15 +58,13 @@ export default function PrintView() {
   return (
     <div className="print-page">
       <div style={{ padding: "16px" }}>
-        {/* Shared doctor header */}
+        {/* Encabezado compartido médico + logo */}
         <DoctorHeader marginBottom={12} />
 
-        {/* Title */}
-        <h1 style={{ marginTop: 0 }}>
-          Historia Clínica
-        </h1>
+        {/* Título */}
+        <h1 style={{ marginTop: 0 }}>Historia Clínica</h1>
 
-        {/* Patient info below title */}
+        {/* Datos del paciente debajo del título */}
         <div
           style={{
             marginTop: "4px",
@@ -78,72 +73,86 @@ export default function PrintView() {
           }}
         >
           <div>
-            <strong>Paciente:</strong>{" "}
-            {patient.first_name}{" "}
-            {patient.last_name}
+            <strong>Paciente:</strong> {patient.first_name} {patient.last_name}
           </div>
           <div>
-            <strong>Documento:</strong>{" "}
-            {patient.document_type}{" "}
+            <strong>Documento:</strong> {patient.document_type}{" "}
             {patient.document_number}
           </div>
           {patient.phone && (
             <div>
-              <strong>Teléfono:</strong>{" "}
-              {patient.phone}
+              <strong>Teléfono:</strong> {patient.phone}
             </div>
           )}
           {patient.sex && (
             <div>
-              <strong>Género:</strong>{" "}
-              {patient.sex}
+              <strong>Género:</strong> {patient.sex}
             </div>
           )}
           {patient.birth_date && (
             <div>
-              <strong>Fecha de nacimiento:</strong>{" "}
-              {patient.birth_date}
+              <strong>Fecha de nacimiento:</strong> {patient.birth_date}
             </div>
           )}
         </div>
 
         <hr />
 
-        {/* All encounters */}
+        {/* Todas las atenciones */}
         {encounters.map((e) => (
           <EncounterBlock key={e.id} e={e} />
         ))}
       </div>
 
-      {/* Footer: timestamp only (page counter handled via CSS) */}
-      <div
-        className="print-footer"
-        style={{
-          fontSize: "9px",
-          color: "#444",
-        }}
-      >
-        Impreso: {printedAt}
-      </div>
     </div>
   );
 }
 
 function EncounterBlock({ e }) {
-  const vit = e.vitals_json
-    ? JSON.parse(e.vitals_json)
-    : {};
+  const vit = e.vitals_json ? JSON.parse(e.vitals_json) : {};
 
   const rows = exec(
     `SELECT * FROM diagnoses WHERE encounter_id=$id ORDER BY is_primary DESC`,
     { $id: e.id }
   );
-  const principal = rows.find(
-    (r) => r.is_primary === 1
-  );
-  const rel = rows.filter(
-    (r) => !r.is_primary
-  );
+
+  // Consider only meaningful diagnoses (have code or label)
+  const meaningfulDx = (rows || []).filter((r) => {
+    const code = String(r.code || "").trim();
+    const label = String(r.label || "").trim();
+    return !!(code || label);
+  });
+
+  const principal =
+    meaningfulDx.find((r) => r.is_primary === 1) || null;
+  const rel = meaningfulDx.filter((r) => !r.is_primary);
+  const hasDx = meaningfulDx.length > 0;
+
+  // Treat default auto-filled objective as "empty" for printing
+  const defaultObjective =
+    "Atencion de usuario, evaluacion, diagnostico y tratamiento";
+  const objectiveText = String(e.objective || "").trim();
+  const hasObjective =
+    !!objectiveText && objectiveText !== defaultObjective;
+
+  const hasChief = !!String(e.chief_complaint || "").trim();
+  const hasHpi = !!String(e.hpi || "").trim();
+  const hasAnt = !!String(e.antecedentes || "").trim();
+  const hasPE = !!String(e.physical_exam || "").trim();
+  const hasPlan = !!String(e.plan || "").trim();
+  const hasImp = !!String(e.impression || "").trim();
+
+  const hasVitals =
+    vit &&
+    (vit.taS ||
+      vit.taD ||
+      vit.fc ||
+      vit.fr ||
+      vit.temp ||
+      vit.spo2 ||
+      vit.talla ||
+      vit.peso ||
+      vit.bmi);
 
   return (
     <div
@@ -153,44 +162,38 @@ function EncounterBlock({ e }) {
       }}
     >
       <h2>
-        {isoToBogotaText(e.occurred_at)} —{" "}
-        {e.cas_code} —{" "}
+        {isoToBogotaText(e.occurred_at)} — {e.cas_code} —{" "}
         {labelType(e.encounter_type)}
       </h2>
 
-      {e.objective && (
+      {hasObjective && (
         <div>
-          <strong>Objetivo:</strong>{" "}
-          {e.objective}
+          <strong>Objetivo:</strong> {e.objective}
         </div>
       )}
 
-      <DiagnosticosPrint
-        principal={principal}
-        relacionados={rel}
-        e={e}
-      />
-
-      {e.chief_complaint && (
+      {hasChief && (
         <Section
           title="Motivo de consulta"
           text={e.chief_complaint}
         />
       )}
-      {e.hpi && (
+
+      {hasHpi && (
         <Section
           title="Enfermedad actual"
           text={e.hpi}
         />
       )}
-      {e.antecedentes && (
+
+      {hasAnt && (
         <Section
           title="Antecedentes"
           text={e.antecedentes}
         />
       )}
 
-      {vit && (vit.taS || vit.talla) && (
+      {hasVitals && (
         <Section
           title="Signos vitales"
           text={
@@ -216,22 +219,32 @@ function EncounterBlock({ e }) {
         />
       )}
 
-      {e.physical_exam && (
+      {hasPE && (
         <Section
           title="Examen físico"
           text={e.physical_exam}
         />
       )}
-      {e.plan && (
+
+      {hasImp && (
+        <Section
+          title="Análisis"
+          text={e.impression}
+        />
+      )}
+
+      {hasPlan && (
         <Section
           title="Plan / Conducta"
           text={e.plan}
         />
       )}
-      {e.impression && (
-        <Section
-          title="Análisis"
-          text={e.impression}
+
+      {hasDx && (
+        <DiagnosticosPrint
+          principal={principal}
+          relacionados={rel}
+          e={e}
         />
       )}
 
@@ -243,65 +256,62 @@ function EncounterBlock({ e }) {
   );
 }
 
-function DiagnosticosPrint({
-  principal,
-  relacionados,
-  e,
-}) {
+function DiagnosticosPrint({ principal, relacionados, e }) {
+  // By the time this is called we already know there is at least one dx
   const tipo =
     principal?.diagnosis_type ||
     relacionados[0]?.diagnosis_type ||
-    "-";
+    "";
 
   return (
     <div style={{ margin: "6px 0" }}>
       <strong>Diagnósticos</strong>
-      <div>
-        Diagnóstico principal:{" "}
-        {principal
-          ? `${principal.code} ${principal.label}`
-          : "-"}
-      </div>
-      <div>
-        Relacionado 1:{" "}
-        {relacionados[0]
-          ? `${relacionados[0].code} ${relacionados[0].label}`
-          : "-"}
-      </div>
-      <div>
-        Relacionado 2:{" "}
-        {relacionados[1]
-          ? `${relacionados[1].code} ${relacionados[1].label}`
-          : "-"}
-      </div>
-      <div>
-        Relacionado 3:{" "}
-        {relacionados[2]
-          ? `${relacionados[2].code} ${relacionados[2].label}`
-          : "-"}
-      </div>
-      <div>Tipo de diagnóstico: {tipo}</div>
-      <div>
-        Finalidad consulta:{" "}
-        {e.finalidad_consulta || "-"}
-      </div>
-      <div>
-        Causa externa:{" "}
-        {e.causa_externa || "-"}
-      </div>
+      {principal && (
+        <div>
+          Diagnóstico principal: {principal.code} {principal.label}
+        </div>
+      )}
+      {relacionados[0] && (
+        <div>
+          Relacionado 1: {relacionados[0].code}{" "}
+          {relacionados[0].label}
+        </div>
+      )}
+      {relacionados[1] && (
+        <div>
+          Relacionado 2: {relacionados[1].code}{" "}
+          {relacionados[1].label}
+        </div>
+      )}
+      {relacionados[2] && (
+        <div>
+          Relacionado 3: {relacionados[2].code}{" "}
+          {relacionados[2].label}
+        </div>
+      )}
+      {tipo && (
+        <div>Tipo de diagnóstico: {tipo}</div>
+      )}
+      {(e.finalidad_consulta || "").trim() && (
+        <div>
+          Finalidad consulta: {e.finalidad_consulta}
+        </div>
+      )}
+      {(e.causa_externa || "").trim() && (
+        <div>
+          Causa externa: {e.causa_externa}
+        </div>
+      )}
     </div>
   );
 }
 
 function Section({ title, text }) {
+  if (!String(text || "").trim()) return null;
   return (
     <div>
       <strong>{title}</strong>
-      <div
-        style={{
-          whiteSpace: "pre-wrap",
-        }}
-      >
+      <div style={{ whiteSpace: "pre-wrap" }}>
         {text}
       </div>
     </div>
@@ -339,26 +349,18 @@ function Prescriptions({ encounterId }) {
           const days = rx.duration_days;
 
           const partes = [];
-          if (rx.dose)
-            partes.push(`${rx.dose}`);
-          if (freq)
-            partes.push(
-              `cada ${freq} horas`
-            );
+          if (rx.dose) partes.push(`${rx.dose}`);
+          if (freq) partes.push(`cada ${freq} horas`);
           if (days)
             partes.push(
               `durante ${days} día${
-                Number(days) === 1
-                  ? ""
-                  : "s"
+                Number(days) === 1 ? "" : "s"
               }`
             );
 
           const frase =
             partes.length > 0
-              ? `Usar ${partes.join(
-                  " "
-                )}.`
+              ? `Usar ${partes.join(" ")}.`
               : "";
 
           return (
@@ -367,9 +369,7 @@ function Prescriptions({ encounterId }) {
               style={{ marginBottom: 4 }}
             >
               <div>
-                <strong>
-                  {rx.active_ingredient}
-                </strong>
+                <strong>{rx.active_ingredient}</strong>
               </div>
               <div>
                 {frase}
@@ -401,22 +401,13 @@ function Procedures({ encounterId }) {
 
   return (
     <div>
-      <strong>
-        Procedimientos
-      </strong>
+      <strong>Procedimientos</strong>
       <ul>
         {rows.map((pr) => (
           <li key={pr.id}>
-            {pr.name}{" "}
-            {pr.code
-              ? `(${pr.code})`
-              : ""}{" "}
-            — Sitio{" "}
-            {pr.anatomical_site ||
-              "-"}{" "}
-            — Lote{" "}
-            {pr.lot_number ||
-              "-"}{" "}
+            {pr.name} {pr.code ? `(${pr.code})` : ""} — Sitio{" "}
+            {pr.anatomical_site || "-"} — Lote{" "}
+            {pr.lot_number || "-"}{" "}
             {pr.consent_obtained
               ? "(consentimiento: Sí)"
               : "(consentimiento: No)"}

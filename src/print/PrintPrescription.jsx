@@ -383,16 +383,6 @@ export default function PrintPrescription() {
         </div>
       ))}
 
-      {/* Footer: timestamp (page X/Y via CSS if configured) */}
-      <div
-        className="print-footer"
-        style={{
-          fontSize: "9px",
-          color: "#444",
-        }}
-      >
-        Impreso: {printedAt}
-      </div>
     </div>
   );
 }
