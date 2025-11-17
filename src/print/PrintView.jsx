@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { openDb, exec } from "../db/index.js";
 import { isoToBogotaText } from "../utils.js";
 import { DoctorHeader, formatPrintDateTime } from "./PrintShared.jsx";
+import doctor from "../config/doctor.json";
 
 export default function PrintView() {
   const { patientId } = useParams();
@@ -12,10 +13,10 @@ export default function PrintView() {
   const [patient, setPatient] = useState(null);
   const [encounters, setEncounters] = useState([]);
 
-  // Fixed timestamp for this print job
+  // Timestamp fijo para este trabajo de impresión (se muestra en el pie)
   const [printedAt] = useState(() => formatPrintDateTime(new Date()));
 
-  // Load data and auto-print
+  // Carga de datos y auto-print
   useEffect(() => {
     openDb().then(() => {
       const p =
@@ -31,12 +32,12 @@ export default function PrintView() {
       setPatient(p);
       setEncounters(e || []);
 
-      // Give React a moment to render before invoking print
+      // Dar tiempo a React para renderizar antes de imprimir
       setTimeout(() => window.print(), 400);
     });
   }, [patientId]);
 
-  // After printing, go back to previous screen (browser & desktop)
+  // Después de imprimir, regresar a la pantalla anterior
   useEffect(() => {
     const onAfter = () => {
       navigate(-1);
@@ -73,7 +74,8 @@ export default function PrintView() {
           }}
         >
           <div>
-            <strong>Paciente:</strong> {patient.first_name} {patient.last_name}
+            <strong>Paciente:</strong> {patient.first_name}{" "}
+            {patient.last_name}
           </div>
           <div>
             <strong>Documento:</strong> {patient.document_type}{" "}
@@ -98,12 +100,32 @@ export default function PrintView() {
 
         <hr />
 
-        {/* Todas las atenciones */}
+        {/* Todas las atenciones, en el mismo orden de secciones que PatientPage */}
         {encounters.map((e) => (
           <EncounterBlock key={e.id} e={e} />
         ))}
-      </div>
 
+        {/* Firma al final de la historia clínica */}
+        <div
+          style={{
+            marginTop: "32px",
+          }}
+        >
+          <div>______________________________</div>
+          <div>{doctor.name}</div>
+          {doctor.professionalId && <div>{doctor.professionalId}</div>}
+          <div>Firma y sello del profesional</div>
+          <div
+            style={{
+              marginTop: "6px",
+              fontSize: "10px",
+              color: "#555",
+            }}
+          >
+            Impresa: {printedAt}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -116,7 +138,7 @@ function EncounterBlock({ e }) {
     { $id: e.id }
   );
 
-  // Consider only meaningful diagnoses (have code or label)
+  // Considerar solo diagnósticos con contenido
   const meaningfulDx = (rows || []).filter((r) => {
     const code = String(r.code || "").trim();
     const label = String(r.label || "").trim();
@@ -128,7 +150,7 @@ function EncounterBlock({ e }) {
   const rel = meaningfulDx.filter((r) => !r.is_primary);
   const hasDx = meaningfulDx.length > 0;
 
-  // Treat default auto-filled objective as "empty" for printing
+  // Objetivo (se omite si es el texto por defecto)
   const defaultObjective =
     "Atencion de usuario, evaluacion, diagnostico y tratamiento";
   const objectiveText = String(e.objective || "").trim();
@@ -158,7 +180,7 @@ function EncounterBlock({ e }) {
     <div
       style={{
         marginBottom: "14px",
-        pageBreakInside: "avoid",
+        // Se elimina pageBreakInside: "avoid" para permitir paginación natural
       }}
     >
       <h2>
@@ -171,6 +193,8 @@ function EncounterBlock({ e }) {
           <strong>Objetivo:</strong> {e.objective}
         </div>
       )}
+
+      {/* Orden alineado con PatientPage: motivo → enfermedad actual → antecedentes → vitales → examen → análisis → plan → diagnósticos */}
 
       {hasChief && (
         <Section
@@ -257,7 +281,7 @@ function EncounterBlock({ e }) {
 }
 
 function DiagnosticosPrint({ principal, relacionados, e }) {
-  // By the time this is called we already know there is at least one dx
+  // Ya se sabe que hay al menos un diagnóstico cuando se llama
   const tipo =
     principal?.diagnosis_type ||
     relacionados[0]?.diagnosis_type ||
@@ -273,34 +297,25 @@ function DiagnosticosPrint({ principal, relacionados, e }) {
       )}
       {relacionados[0] && (
         <div>
-          Relacionado 1: {relacionados[0].code}{" "}
-          {relacionados[0].label}
+          Relacionado 1: {relacionados[0].code} {relacionados[0].label}
         </div>
       )}
       {relacionados[1] && (
         <div>
-          Relacionado 2: {relacionados[1].code}{" "}
-          {relacionados[1].label}
+          Relacionado 2: {relacionados[1].code} {relacionados[1].label}
         </div>
       )}
       {relacionados[2] && (
         <div>
-          Relacionado 3: {relacionados[2].code}{" "}
-          {relacionados[2].label}
+          Relacionado 3: {relacionados[2].code} {relacionados[2].label}
         </div>
       )}
-      {tipo && (
-        <div>Tipo de diagnóstico: {tipo}</div>
-      )}
+      {tipo && <div>Tipo de diagnóstico: {tipo}</div>}
       {(e.finalidad_consulta || "").trim() && (
-        <div>
-          Finalidad consulta: {e.finalidad_consulta}
-        </div>
+        <div>Finalidad consulta: {e.finalidad_consulta}</div>
       )}
       {(e.causa_externa || "").trim() && (
-        <div>
-          Causa externa: {e.causa_externa}
-        </div>
+        <div>Causa externa: {e.causa_externa}</div>
       )}
     </div>
   );
@@ -311,7 +326,12 @@ function Section({ title, text }) {
   return (
     <div>
       <strong>{title}</strong>
-      <div style={{ whiteSpace: "pre-wrap" }}>
+      <div
+        style={{
+          whiteSpace: "pre-wrap",
+          textAlign: "justify",
+        }}
+      >
         {text}
       </div>
     </div>
@@ -359,15 +379,10 @@ function Prescriptions({ encounterId }) {
             );
 
           const frase =
-            partes.length > 0
-              ? `Usar ${partes.join(" ")}.`
-              : "";
+            partes.length > 0 ? `Usar ${partes.join(" ")}.` : "";
 
           return (
-            <li
-              key={rx.id}
-              style={{ marginBottom: 4 }}
-            >
+            <li key={rx.id} style={{ marginBottom: 4 }}>
               <div>
                 <strong>{rx.active_ingredient}</strong>
               </div>
@@ -406,8 +421,7 @@ function Procedures({ encounterId }) {
         {rows.map((pr) => (
           <li key={pr.id}>
             {pr.name} {pr.code ? `(${pr.code})` : ""} — Sitio{" "}
-            {pr.anatomical_site || "-"} — Lote{" "}
-            {pr.lot_number || "-"}{" "}
+            {pr.anatomical_site || "-"} — Lote {pr.lot_number || "-"}{" "}
             {pr.consent_obtained
               ? "(consentimiento: Sí)"
               : "(consentimiento: No)"}
