@@ -1,22 +1,29 @@
 // src/print/PrintView.jsx
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { openDb, exec } from "../db/index.js";
 import { isoToBogotaText } from "../utils.js";
 import { DoctorHeader, formatPrintDateTime } from "./PrintShared.jsx";
-import doctor from "../config/doctor.json";
+
+const isElectron =
+  typeof window !== "undefined" && !!window.electronAPI;
 
 export default function PrintView() {
   const { patientId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [patient, setPatient] = useState(null);
   const [encounters, setEncounters] = useState([]);
 
-  // Timestamp fijo para este trabajo de impresión (se muestra en el pie)
+  // Fixed timestamp for this print job (kept for future footer use)
   const [printedAt] = useState(() => formatPrintDateTime(new Date()));
 
-  // Carga de datos y auto-print
+  const searchParams = new URLSearchParams(location.search);
+  const isPdfExport =
+    isElectron && searchParams.get("mode") === "pdf";
+
+  // Load data
   useEffect(() => {
     openDb().then(() => {
       const p =
@@ -31,14 +38,42 @@ export default function PrintView() {
 
       setPatient(p);
       setEncounters(e || []);
-
-      // Dar tiempo a React para renderizar antes de imprimir
-      setTimeout(() => window.print(), 400);
     });
   }, [patientId]);
 
-  // Después de imprimir, regresar a la pantalla anterior
+  // Trigger print or PDF export once data is loaded
   useEffect(() => {
+    if (!patient) return;
+
+    // Desktop export using Electron
+    if (isPdfExport && isElectron && window.electronAPI?.exportHistoryPdf) {
+      const suggestedName = `historia_${patient.document_type || "DOC"}_${
+        patient.document_number || patient.id
+      }.pdf`;
+
+      window.electronAPI
+        .exportHistoryPdf({ suggestedName })
+        .then(() => {
+          navigate(-1);
+        })
+        .catch((err) => {
+          console.error("Error exportando PDF:", err);
+          alert("No se pudo exportar la historia a PDF.");
+          navigate(-1);
+        });
+
+      return;
+    }
+
+    // Browser / system print dialog
+    const handle = setTimeout(() => window.print(), 400);
+    return () => clearTimeout(handle);
+  }, [patient, isPdfExport, navigate]);
+
+  // After printing, go back to previous screen (browser & desktop window.print)
+  useEffect(() => {
+    if (isPdfExport) return;
+
     const onAfter = () => {
       navigate(-1);
     };
@@ -46,7 +81,7 @@ export default function PrintView() {
     return () => {
       window.removeEventListener("afterprint", onAfter);
     };
-  }, [navigate]);
+  }, [navigate, isPdfExport]);
 
   if (!patient) {
     return (
@@ -93,38 +128,18 @@ export default function PrintView() {
           )}
           {patient.birth_date && (
             <div>
-              <strong>Fecha de nacimiento:</strong> {patient.birth_date}
+              <strong>Fecha de nacimiento:</strong>{" "}
+              {patient.birth_date}
             </div>
           )}
         </div>
 
         <hr />
 
-        {/* Todas las atenciones, en el mismo orden de secciones que PatientPage */}
+        {/* Todas las atenciones */}
         {encounters.map((e) => (
           <EncounterBlock key={e.id} e={e} />
         ))}
-
-        {/* Firma al final de la historia clínica */}
-        <div
-          style={{
-            marginTop: "32px",
-          }}
-        >
-          <div>______________________________</div>
-          <div>{doctor.name}</div>
-          {doctor.professionalId && <div>{doctor.professionalId}</div>}
-          <div>Firma y sello del profesional</div>
-          <div
-            style={{
-              marginTop: "6px",
-              fontSize: "10px",
-              color: "#555",
-            }}
-          >
-            Impresa: {printedAt}
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -138,7 +153,7 @@ function EncounterBlock({ e }) {
     { $id: e.id }
   );
 
-  // Considerar solo diagnósticos con contenido
+  // Consider only meaningful diagnoses (have code or label)
   const meaningfulDx = (rows || []).filter((r) => {
     const code = String(r.code || "").trim();
     const label = String(r.label || "").trim();
@@ -150,7 +165,7 @@ function EncounterBlock({ e }) {
   const rel = meaningfulDx.filter((r) => !r.is_primary);
   const hasDx = meaningfulDx.length > 0;
 
-  // Objetivo (se omite si es el texto por defecto)
+  // Treat default auto-filled objective as "empty" for printing
   const defaultObjective =
     "Atencion de usuario, evaluacion, diagnostico y tratamiento";
   const objectiveText = String(e.objective || "").trim();
@@ -180,7 +195,7 @@ function EncounterBlock({ e }) {
     <div
       style={{
         marginBottom: "14px",
-        // Se elimina pageBreakInside: "avoid" para permitir paginación natural
+        pageBreakInside: "avoid",
       }}
     >
       <h2>
@@ -193,8 +208,6 @@ function EncounterBlock({ e }) {
           <strong>Objetivo:</strong> {e.objective}
         </div>
       )}
-
-      {/* Orden alineado con PatientPage: motivo → enfermedad actual → antecedentes → vitales → examen → análisis → plan → diagnósticos */}
 
       {hasChief && (
         <Section
@@ -281,7 +294,7 @@ function EncounterBlock({ e }) {
 }
 
 function DiagnosticosPrint({ principal, relacionados, e }) {
-  // Ya se sabe que hay al menos un diagnóstico cuando se llama
+  // By the time this is called we already know there is at least one dx
   const tipo =
     principal?.diagnosis_type ||
     relacionados[0]?.diagnosis_type ||
@@ -292,30 +305,38 @@ function DiagnosticosPrint({ principal, relacionados, e }) {
       <strong>Diagnósticos</strong>
       {principal && (
         <div>
-          Diagnóstico principal: {principal.code} {principal.label}
+          Diagnóstico principal: {principal.code}{" "}
+          {principal.label}
         </div>
       )}
       {relacionados[0] && (
         <div>
-          Relacionado 1: {relacionados[0].code} {relacionados[0].label}
+          Relacionado 1: {relacionados[0].code}{" "}
+          {relacionados[0].label}
         </div>
       )}
       {relacionados[1] && (
         <div>
-          Relacionado 2: {relacionados[1].code} {relacionados[1].label}
+          Relacionado 2: {relacionados[1].code}{" "}
+          {relacionados[1].label}
         </div>
       )}
       {relacionados[2] && (
         <div>
-          Relacionado 3: {relacionados[2].code} {relacionados[2].label}
+          Relacionado 3: {relacionados[2].code}{" "}
+          {relacionados[2].label}
         </div>
       )}
       {tipo && <div>Tipo de diagnóstico: {tipo}</div>}
       {(e.finalidad_consulta || "").trim() && (
-        <div>Finalidad consulta: {e.finalidad_consulta}</div>
+        <div>
+          Finalidad consulta: {e.finalidad_consulta}
+        </div>
       )}
       {(e.causa_externa || "").trim() && (
-        <div>Causa externa: {e.causa_externa}</div>
+        <div>
+          Causa externa: {e.causa_externa}
+        </div>
       )}
     </div>
   );
@@ -326,14 +347,7 @@ function Section({ title, text }) {
   return (
     <div>
       <strong>{title}</strong>
-      <div
-        style={{
-          whiteSpace: "pre-wrap",
-          textAlign: "justify",
-        }}
-      >
-        {text}
-      </div>
+      <div style={{ whiteSpace: "pre-wrap" }}>{text}</div>
     </div>
   );
 }
@@ -373,9 +387,7 @@ function Prescriptions({ encounterId }) {
           if (freq) partes.push(`cada ${freq} horas`);
           if (days)
             partes.push(
-              `durante ${days} día${
-                Number(days) === 1 ? "" : "s"
-              }`
+              `durante ${days} día${Number(days) === 1 ? "" : "s"}`
             );
 
           const frase =
@@ -421,7 +433,8 @@ function Procedures({ encounterId }) {
         {rows.map((pr) => (
           <li key={pr.id}>
             {pr.name} {pr.code ? `(${pr.code})` : ""} — Sitio{" "}
-            {pr.anatomical_site || "-"} — Lote {pr.lot_number || "-"}{" "}
+            {pr.anatomical_site || "-"} — Lote{" "}
+            {pr.lot_number || "-"}{" "}
             {pr.consent_obtained
               ? "(consentimiento: Sí)"
               : "(consentimiento: No)"}

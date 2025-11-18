@@ -1,11 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import {
-  openDb,
-  exec,
-  run,
-  persistNow,
-} from "../db/index.js";
+import { openDb, exec, run, persistNow } from "../db/index.js";
 import {
   nowIso,
   fullName,
@@ -15,6 +10,9 @@ import {
 import Diagnoses from "../components/Diagnoses.jsx";
 import Prescriptions from "../components/Prescriptions.jsx";
 import Procedures from "../components/Procedures.jsx";
+
+const isElectron =
+  typeof window !== "undefined" && !!window.electronAPI;
 
 export default function PatientPage() {
   const { patientId } = useParams();
@@ -215,8 +213,8 @@ export default function PatientPage() {
         <div>
           <div className="kicker">Paciente</div>
           <div>
-            <strong>{fullName(patient)}</strong> — {patient.document_type}{" "}
-            {patient.document_number}
+            <strong>{fullName(patient)}</strong> —{" "}
+            {patient.document_type} {patient.document_number}
           </div>
         </div>
         <div className="no-print" style={{ display: "flex", gap: "8px" }}>
@@ -231,6 +229,18 @@ export default function PatientPage() {
           >
             Imprimir historia completa
           </button>
+
+          {/* Exportar PDF sólo en escritorio */}
+          {isElectron && (
+            <button
+              className="ghost"
+              onClick={() =>
+                navigate("/print/" + patient.id + "?mode=pdf")
+              }
+            >
+              Exportar historia (PDF)
+            </button>
+          )}
 
           {/* Fórmula médica solo del encuentro activo */}
           <button
@@ -482,13 +492,10 @@ export default function PatientPage() {
         )}
 
         {encounter.encounter_type === "minor_procedure" && (
-          <SectionCard
-            title="Adjuntos"
-            defaultOpen={false}
-          >
+          <SectionCard title="Adjuntos" defaultOpen={false}>
             <div className="small">
-              Adjuntos — pendiente definir metadatos y
-              carga de archivos.
+              Adjuntos — pendiente definir metadatos y carga
+              de archivos.
             </div>
           </SectionCard>
         )}
