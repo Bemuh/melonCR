@@ -165,6 +165,32 @@ async function migrate() {
   if (!names.includes('causa_externa')) {
     db.run(`ALTER TABLE encounters ADD COLUMN causa_externa TEXT`);
   }
+  if (!names.includes('procedures_notes')) {
+    db.run(`ALTER TABLE encounters ADD COLUMN procedures_notes TEXT`);
+  }
+
+  // Procedures migration
+  const procCols = exec(`PRAGMA table_info(procedures)`);
+  const procNames = procCols.map(c => c.name);
+  if (!procNames.includes('description')) {
+    db.run(`ALTER TABLE procedures ADD COLUMN description TEXT`);
+  }
+  if (!procNames.includes('notes')) {
+    db.run(`ALTER TABLE procedures ADD COLUMN notes TEXT`);
+  }
+
+  // Create procedure_attachments if missing
+  db.run(`
+    CREATE TABLE IF NOT EXISTS procedure_attachments (
+      id TEXT PRIMARY KEY,
+      procedure_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      data TEXT NOT NULL, -- Base64
+      type TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (procedure_id) REFERENCES procedures(id) ON DELETE CASCADE
+    )
+  `);
 }
 
 /* ---------- initial schema (used for fresh DBs) ---------- */
@@ -202,6 +228,7 @@ CREATE TABLE IF NOT EXISTS encounters (
   plan TEXT,
   finalidad_consulta TEXT,   -- new
   causa_externa TEXT,        -- new
+  procedures_notes TEXT,     -- new
   status TEXT NOT NULL,
   created_by TEXT,
   created_at TEXT NOT NULL,
@@ -244,6 +271,10 @@ CREATE TABLE IF NOT EXISTS procedures (
   encounter_id TEXT NOT NULL,
   name TEXT NOT NULL,
   code TEXT,
+  description TEXT,
+  notes TEXT,
+  consent_obtained INTEGER,
+  -- Legacy fields (kept for schema compatibility if needed, but unused in new UI)
   technique TEXT,
   anatomical_site TEXT,
   materials TEXT,
@@ -253,8 +284,17 @@ CREATE TABLE IF NOT EXISTS procedures (
   responsible TEXT,
   complications TEXT,
   post_observation TEXT,
-  consent_obtained INTEGER,
   FOREIGN KEY (encounter_id) REFERENCES encounters(id)
+);
+
+CREATE TABLE IF NOT EXISTS procedure_attachments (
+  id TEXT PRIMARY KEY,
+  procedure_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  data TEXT NOT NULL, -- Base64
+  type TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (procedure_id) REFERENCES procedures(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS attachments (

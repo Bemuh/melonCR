@@ -46,3 +46,12 @@ export function isoToBogotaText(iso) {
   // -> "DD-MM-YYYY HH:MM"
   return `${parts.day}-${parts.month}-${parts.year} ${parts.hour}:${parts.minute}`;
 }
+
+export function getEncounterLabel(type) {
+  switch (type) {
+    case 'first_visit': return 'Primera vez / ingreso';
+    case 'follow_up': return 'Control / seguimiento';
+    case 'minor_procedure': return 'Procedimientos menores';
+    default: return type;
+  }
+}

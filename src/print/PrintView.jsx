@@ -312,6 +312,7 @@ function EncounterBlock({ e }) {
 
       <Prescriptions encounterId={e.id} />
       <Procedures encounterId={e.id} />
+      <Attachments encounterId={e.id} notes={e.procedures_notes} />
 
       <hr />
     </div>
@@ -461,15 +462,51 @@ function Procedures({ encounterId }) {
       <ul>
         {rows.map((pr) => (
           <li key={pr.id}>
-            {pr.name} {pr.code ? `(${pr.code})` : ""} — Sitio{" "}
-            {pr.anatomical_site || "-"} — Lote{" "}
-            {pr.lot_number || "-"}{" "}
-            {pr.consent_obtained
-              ? "(consentimiento: Sí)"
-              : "(consentimiento: No)"}
+            {pr.name} {pr.code ? `(${pr.code})` : ""}
+            {pr.description && <div><small>{pr.description}</small></div>}
+            {pr.consent_obtained === 1 && (
+              <div style={{ fontSize: '0.9em', fontStyle: 'italic' }}>
+                Consentimiento informado obtenido
+              </div>
+            )}
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function Attachments({ encounterId, notes }) {
+  const [files, setFiles] = useState([]);
+
+  useEffect(() => {
+    const r = exec(
+      `SELECT file_name FROM attachments WHERE encounter_id=$id AND attachment_type='procedure_file'`,
+      { $id: encounterId }
+    );
+    setFiles(r);
+  }, [encounterId]);
+
+  if (!notes && !files.length) return null;
+
+  return (
+    <div className="print-text-block">
+      <strong>Adjuntos</strong>
+      {notes && (
+        <div style={{ whiteSpace: "pre-wrap", marginBottom: 8 }}>
+          {notes}
+        </div>
+      )}
+      {files.length > 0 && (
+        <div>
+          <em>Archivos adjuntos:</em>
+          <ul style={{ marginTop: 4 }}>
+            {files.map((f, i) => (
+              <li key={i}>{f.file_name}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

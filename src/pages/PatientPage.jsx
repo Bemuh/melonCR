@@ -6,6 +6,7 @@ import {
   fullName,
   isoToBogotaInput,
   bogotaInputToIso,
+  getEncounterLabel,
 } from "../utils.js";
 import Diagnoses from "../components/Diagnoses.jsx";
 import Prescriptions from "../components/Prescriptions.jsx";
@@ -26,7 +27,7 @@ export default function PatientPage() {
   const [showNoRxModal, setShowNoRxModal] = useState(false);
 
   // counters to mark sections empty/full
-  const [counts, setCounts] = useState({ dx: 0, rx: 0, pr: 0 });
+  const [counts, setCounts] = useState({ dx: 0, rx: 0, pr: 0, at: 0 });
 
   // Load patient + encounters
   useEffect(() => {
@@ -82,10 +83,17 @@ export default function PatientPage() {
         { $id: activeEncounterId }
       )[0]?.c ?? 0;
 
+    const at =
+      exec(
+        `SELECT COUNT(1) c FROM attachments WHERE encounter_id=$id AND attachment_type='procedure_file'`,
+        { $id: activeEncounterId }
+      )[0]?.c ?? 0;
+
     setCounts({
       dx: Number(dx),
       rx: Number(rx),
       pr: Number(pr),
+      at: Number(at),
     });
   }, [activeEncounterId]);
 
@@ -163,6 +171,15 @@ export default function PatientPage() {
     );
   }
 
+  // Sync check: don't render if encounter doesn't match active ID (prevents stale data in defaultValues)
+  if (!encounter || encounter.id !== activeEncounterId) {
+    return (
+      <div className="container">
+        <div className="card">Cargando atención...</div>
+      </div>
+    );
+  }
+
   // --- empty flags for warnings ---
   const vitEmpty = (() => {
     try {
@@ -203,10 +220,12 @@ export default function PatientPage() {
     dx: counts.dx === 0,
     rx: counts.rx === 0,
     pr: counts.pr === 0,
+    at: counts.at === 0,
   };
 
   // key so that when encounter changes, SectionCards remount and defaultOpen recomputes
   const sectionKey = activeEncounterId;
+  const isMinorProc = encounter.encounter_type === 'minor_procedure';
 
   return (
     <div className="container">
@@ -223,9 +242,6 @@ export default function PatientPage() {
           <Link to="/">
             <button className="ghost">Volver al inicio</button>
           </Link>
-
-          {/* Historia completa */}
-
 
           {/* Exportar PDF sólo en escritorio */}
           {isElectron && (
@@ -281,7 +297,7 @@ export default function PatientPage() {
               {encounters.map((e) => (
                 <option key={e.id} value={e.id}>
                   {isoToBogotaInput(e.occurred_at).replace("T", " ")} —{" "}
-                  {e.cas_code}
+                  {e.cas_code} ({getEncounterLabel(e.encounter_type)})
                 </option>
               ))}
             </select>
@@ -342,7 +358,7 @@ export default function PatientPage() {
 
       {/* Sections (remount on encounter change for defaultOpen) */}
       <div key={sectionKey}>
-        {/* 1. Datos del paciente */}
+        {/* 1. Datos del paciente (Always shown) */}
         <SectionCard
           title="Datos del paciente"
           empty={empties.datos}
@@ -351,114 +367,150 @@ export default function PatientPage() {
           <PatientFields patient={patient} setPatient={setPatient} />
         </SectionCard>
 
-        {/* 2. Motivo de consulta */}
-        <SectionCard
-          title="Motivo de consulta"
-          empty={empties.motivo}
-          defaultOpen={!empties.motivo}
-        >
-          <TextAreaAuto
-            encounter={encounter}
-            field="chief_complaint"
-            label="Motivo de consulta"
-            setEncounter={setEncounter}
-          />
-        </SectionCard>
+        {/* Standard Sections (Hidden for Minor Procedures) */}
+        {!isMinorProc && (
+          <>
+            <SectionCard
+              title="Motivo de consulta"
+              empty={empties.motivo}
+              defaultOpen={!empties.motivo}
+            >
+              <TextAreaAuto
+                encounter={encounter}
+                field="chief_complaint"
+                label="Motivo de consulta"
+                setEncounter={setEncounter}
+              />
+            </SectionCard>
 
-        {/* 3. Enfermedad actual */}
-        <SectionCard
-          title="Enfermedad actual"
-          empty={empties.enfermedad}
-          defaultOpen={!empties.enfermedad}
-        >
-          <TextAreaAuto
-            encounter={encounter}
-            field="hpi"
-            label="Enfermedad actual (HPI)"
-            setEncounter={setEncounter}
-          />
-        </SectionCard>
+            <SectionCard
+              title="Enfermedad actual"
+              empty={empties.enfermedad}
+              defaultOpen={!empties.enfermedad}
+            >
+              <TextAreaAuto
+                encounter={encounter}
+                field="hpi"
+                label="Enfermedad actual (HPI)"
+                setEncounter={setEncounter}
+              />
+            </SectionCard>
 
-        {/* 4. Antecedentes */}
-        <SectionCard
-          title="Antecedentes"
-          empty={empties.antecedentes}
-          defaultOpen={!empties.antecedentes}
-        >
-          <TextAreaAuto
-            encounter={encounter}
-            field="antecedentes"
-            label="Antecedentes"
-            setEncounter={setEncounter}
-          />
-        </SectionCard>
+            <SectionCard
+              title="Antecedentes"
+              empty={empties.antecedentes}
+              defaultOpen={!empties.antecedentes}
+            >
+              <TextAreaAuto
+                encounter={encounter}
+                field="antecedentes"
+                label="Antecedentes"
+                setEncounter={setEncounter}
+              />
+            </SectionCard>
 
-        {/* 5. Signos vitales */}
-        <SectionCard
-          title="Signos vitales"
-          empty={empties.vitales}
-          defaultOpen={!empties.vitales}
-        >
-          <Vitals encounter={encounter} setEncounter={setEncounter} />
-        </SectionCard>
+            <SectionCard
+              title="Signos vitales"
+              empty={empties.vitales}
+              defaultOpen={!empties.vitales}
+            >
+              <Vitals encounter={encounter} setEncounter={setEncounter} />
+            </SectionCard>
 
-        {/* 6. Examen físico */}
-        <SectionCard
-          title="Examen físico"
-          empty={empties.examen}
-          defaultOpen={!empties.examen}
-        >
-          <TextAreaAuto
-            encounter={encounter}
-            field="physical_exam"
-            label="Examen físico"
-            setEncounter={setEncounter}
-          />
-        </SectionCard>
+            <SectionCard
+              title="Examen físico"
+              empty={empties.examen}
+              defaultOpen={!empties.examen}
+            >
+              <TextAreaAuto
+                encounter={encounter}
+                field="physical_exam"
+                label="Examen físico"
+                setEncounter={setEncounter}
+              />
+            </SectionCard>
 
-        {/* 7. Análisis */}
-        <SectionCard
-          title="Análisis"
-          empty={empties.analisis}
-          defaultOpen={!empties.analisis}
-        >
-          <TextAreaAuto
-            encounter={encounter}
-            field="impression"
-            label="Análisis"
-            setEncounter={setEncounter}
-          />
-        </SectionCard>
+            <SectionCard
+              title="Análisis"
+              empty={empties.analisis}
+              defaultOpen={!empties.analisis}
+            >
+              <TextAreaAuto
+                encounter={encounter}
+                field="impression"
+                label="Análisis"
+                setEncounter={setEncounter}
+              />
+            </SectionCard>
 
-        {/* 8. Plan / Conducta */}
-        <SectionCard
-          title="Plan / Conducta"
-          empty={empties.plan}
-          defaultOpen={!empties.plan}
-        >
-          <TextAreaAuto
-            encounter={encounter}
-            field="plan"
-            label="Plan"
-            setEncounter={setEncounter}
-          />
-        </SectionCard>
+            <SectionCard
+              title="Plan / Conducta"
+              empty={empties.plan}
+              defaultOpen={!empties.plan}
+            >
+              <TextAreaAuto
+                encounter={encounter}
+                field="plan"
+                label="Plan"
+                setEncounter={setEncounter}
+              />
+            </SectionCard>
 
-        {/* 9. Diagnósticos (CIE-10) */}
-        <SectionCard
-          title="Diagnósticos (CIE-10)"
-          empty={empties.dx}
-          defaultOpen={!empties.dx}
-        >
-          <Diagnoses
-            encounter={encounter}
-            onCountChange={(n) =>
-              setCounts((c) => ({ ...c, dx: n }))
-            }
-          />
-        </SectionCard>
+            <SectionCard
+              title="Diagnósticos (CIE-10)"
+              empty={empties.dx}
+              defaultOpen={!empties.dx}
+            >
+              <Diagnoses
+                encounter={encounter}
+                onCountChange={(n) =>
+                  setCounts((c) => ({ ...c, dx: n }))
+                }
+              />
+            </SectionCard>
+          </>
+        )}
 
-        {/* 10. Fórmula médica */}
+        {/* Procedimientos (Only for Minor Procedures) */}
+        {isMinorProc && (
+          <SectionCard
+            title="Procedimientos"
+            empty={empties.pr}
+            defaultOpen={!empties.pr}
+          >
+            <Procedures
+              encounter={encounter}
+              mode="procedures_only"
+              onCountChange={(n) =>
+                setCounts((c) => ({ ...c, pr: n }))
+              }
+            />
+          </SectionCard>
+        )}
+
+        {/* Adjuntos (Only for Minor Procedures) */}
+        {isMinorProc && (
+          <SectionCard
+            title="Adjuntos"
+            empty={empties.at}
+            defaultOpen={!empties.at}
+          >
+            <Procedures
+              encounter={encounter}
+              mode="attachments_only"
+              onCountChange={(n) =>
+                setCounts((c) => ({ ...c, at: n }))
+              }
+            />
+          </SectionCard>
+        )}
+
+        {/* Remove the placeholder Adjuntos card if I'm using Procedures.jsx for it. 
+            Actually, let's just use Procedures.jsx. It has the attachments.
+            I will remove the explicit "Adjuntos" SectionCard I added in the previous turn (or that was there).
+        */}
+
+        {/* Fórmula médica (Always shown or at least for Minor Proc too) */}
         <SectionCard
           title="Fórmula médica"
           empty={empties.rx}
@@ -471,31 +523,6 @@ export default function PatientPage() {
             }
           />
         </SectionCard>
-
-        {/* Procedimientos + Adjuntos ONLY for procedimientos menores */}
-        {encounter.encounter_type === "minor_procedure" && (
-          <SectionCard
-            title="Procedimientos"
-            empty={empties.pr}
-            defaultOpen={!empties.pr}
-          >
-            <Procedures
-              encounter={encounter}
-              onCountChange={(n) =>
-                setCounts((c) => ({ ...c, pr: n }))
-              }
-            />
-          </SectionCard>
-        )}
-
-        {encounter.encounter_type === "minor_procedure" && (
-          <SectionCard title="Adjuntos" defaultOpen={false}>
-            <div className="small">
-              Adjuntos — pendiente definir metadatos y carga
-              de archivos.
-            </div>
-          </SectionCard>
-        )}
       </div>
 
       {
