@@ -58,11 +58,15 @@ export default function PrintView() {
 
     // Desktop: exportar PDF con Electron
     if (isPdfExport && isElectron && window.electronAPI?.exportHistoryPdf) {
-      const suggestedName = `historia_${patient.document_type || "DOC"}_${patient.document_number || patient.id
-        }.pdf`;
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10);
+      const timeStr = now.toTimeString().slice(0, 5).replace(":", "");
+      const filename = `Historia_${patient?.document_number || "Doc"}_${dateStr}_${timeStr}.pdf`;
 
       window.electronAPI
-        .exportHistoryPdf({ suggestedName })
+        .exportHistoryPdf({
+          suggestedName: filename,
+        })
         .then(() => {
           navigate(-1);
         })

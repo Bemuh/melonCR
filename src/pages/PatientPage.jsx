@@ -230,39 +230,37 @@ export default function PatientPage() {
           {/* Exportar PDF sólo en escritorio */}
           {isElectron && (
             <button
-              className="ghost"
-              onClick={() =>
-                navigate("/print/" + patient.id + "?mode=pdf")
-              }
+              className="secondary"
+              onClick={() => navigate("/print/" + patient.id + "?mode=pdf")}
             >
-              Exportar historia (PDF)
+              Exportar historia
             </button>
           )}
 
           {/* Fórmula médica solo del encuentro activo */}
-          <button
-            className="ghost"
-            disabled={!activeEncounterId}
-            onClick={() => {
-              if (!activeEncounterId) return;
-              const r = exec(
-                `SELECT COUNT(1) c FROM prescriptions WHERE encounter_id=$id`,
-                { $id: activeEncounterId }
-              );
-              const count = Number(r[0]?.c || 0);
-              if (!count) {
-                setShowNoRxModal(true);
-                return;
-              }
-              navigate(
-                "/rx/" +
-                activeEncounterId +
-                (isElectron ? "?mode=pdf" : "")
-              );
-            }}
-          >
-            Imprimir fórmula médica
-          </button>
+          {activeEncounterId && (
+            <button
+              onClick={() => {
+                if (!activeEncounterId) return;
+                const r = exec(
+                  `SELECT COUNT(1) c FROM prescriptions WHERE encounter_id=$id`,
+                  { $id: activeEncounterId }
+                );
+                const count = Number(r[0]?.c || 0);
+                if (!count) {
+                  setShowNoRxModal(true);
+                  return;
+                }
+                navigate(
+                  "/rx/" +
+                  activeEncounterId +
+                  (isElectron ? "?mode=pdf" : "")
+                );
+              }}
+            >
+              Exportar fórmula médica
+            </button>
+          )}
         </div>
       </div>
 
@@ -500,16 +498,18 @@ export default function PatientPage() {
         )}
       </div>
 
-      {showNoRxModal && (
-        <Modal
-          title="Fórmula vacía"
-          onClose={() => setShowNoRxModal(false)}
-        >
-          No hay medicamentos registrados en la fórmula médica para esta
-          atención.
-        </Modal>
-      )}
-    </div>
+      {
+        showNoRxModal && (
+          <Modal
+            title="Fórmula vacía"
+            onClose={() => setShowNoRxModal(false)}
+          >
+            No hay medicamentos registrados en la fórmula médica para esta
+            atención.
+          </Modal>
+        )
+      }
+    </div >
   );
 }
 

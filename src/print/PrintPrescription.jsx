@@ -167,11 +167,15 @@ export default function PrintPrescription() {
         isElectron && searchParams.get("mode") === "pdf";
 
       if (isPdfExport && window.electronAPI?.exportHistoryPdf) {
-        const suggestedName = `formula_${pat.document_type || "DOC"}_${pat.document_number || pat.id
-          }.pdf`;
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10);
+        const timeStr = now.toTimeString().slice(0, 5).replace(":", "");
+        const filename = `Formula_${pat?.document_number || "Doc"}_${dateStr}_${timeStr}.pdf`;
 
         window.electronAPI
-          .exportHistoryPdf({ suggestedName })
+          .exportHistoryPdf({
+            suggestedName: filename,
+          })
           .then(() => {
             navigate(-1);
           })
@@ -428,7 +432,7 @@ export default function PrintPrescription() {
       ))}
 
       <div className="print-footer-text">
-        Generado el {isoToBogotaText(new Date().toISOString())}
+        Generado el {printedAt}
       </div>
 
       {modal.open && (
