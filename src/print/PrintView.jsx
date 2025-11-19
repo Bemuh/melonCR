@@ -16,14 +16,14 @@ export default function PrintView() {
   const [patient, setPatient] = useState(null);
   const [encounters, setEncounters] = useState([]);
 
-  // Fixed timestamp for this print job (kept for future footer use)
+  // Timestamp fijo para este trabajo de impresión (por si luego se usa en footer)
   const [printedAt] = useState(() => formatPrintDateTime(new Date()));
 
   const searchParams = new URLSearchParams(location.search);
   const isPdfExport =
     isElectron && searchParams.get("mode") === "pdf";
 
-  // Load data
+  // Carga de datos
   useEffect(() => {
     openDb().then(() => {
       const p =
@@ -41,15 +41,14 @@ export default function PrintView() {
     });
   }, [patientId]);
 
-  // Trigger print or PDF export once data is loaded
+  // Disparar impresión o exportación a PDF cuando ya hay datos
   useEffect(() => {
     if (!patient) return;
 
-    // Desktop export using Electron
+    // Desktop: exportar PDF con Electron
     if (isPdfExport && isElectron && window.electronAPI?.exportHistoryPdf) {
-      const suggestedName = `historia_${patient.document_type || "DOC"}_${
-        patient.document_number || patient.id
-      }.pdf`;
+      const suggestedName = `historia_${patient.document_type || "DOC"}_${patient.document_number || patient.id
+        }.pdf`;
 
       window.electronAPI
         .exportHistoryPdf({ suggestedName })
@@ -65,12 +64,12 @@ export default function PrintView() {
       return;
     }
 
-    // Browser / system print dialog
+    // Navegador: diálogo de impresión del sistema
     const handle = setTimeout(() => window.print(), 400);
     return () => clearTimeout(handle);
   }, [patient, isPdfExport, navigate]);
 
-  // After printing, go back to previous screen (browser & desktop window.print)
+  // Volver atrás después de imprimir (sólo cuando NO es modo PDF interno)
   useEffect(() => {
     if (isPdfExport) return;
 
@@ -153,7 +152,7 @@ function EncounterBlock({ e }) {
     { $id: e.id }
   );
 
-  // Consider only meaningful diagnoses (have code or label)
+  // Sólo diagnósticos significativos
   const meaningfulDx = (rows || []).filter((r) => {
     const code = String(r.code || "").trim();
     const label = String(r.label || "").trim();
@@ -165,7 +164,7 @@ function EncounterBlock({ e }) {
   const rel = meaningfulDx.filter((r) => !r.is_primary);
   const hasDx = meaningfulDx.length > 0;
 
-  // Treat default auto-filled objective as "empty" for printing
+  // Objetivo por defecto se trata como "vacío" para impresión
   const defaultObjective =
     "Atencion de usuario, evaluacion, diagnostico y tratamiento";
   const objectiveText = String(e.objective || "").trim();
@@ -195,7 +194,6 @@ function EncounterBlock({ e }) {
     <div
       style={{
         marginBottom: "14px",
-        pageBreakInside: "avoid",
       }}
     >
       <h2>
@@ -204,7 +202,7 @@ function EncounterBlock({ e }) {
       </h2>
 
       {hasObjective && (
-        <div>
+        <div className="print-text-block">
           <strong>Objetivo:</strong> {e.objective}
         </div>
       )}
@@ -294,14 +292,13 @@ function EncounterBlock({ e }) {
 }
 
 function DiagnosticosPrint({ principal, relacionados, e }) {
-  // By the time this is called we already know there is at least one dx
   const tipo =
     principal?.diagnosis_type ||
     relacionados[0]?.diagnosis_type ||
     "";
 
   return (
-    <div style={{ margin: "6px 0" }}>
+    <div className="print-text-block" style={{ margin: "6px 0" }}>
       <strong>Diagnósticos</strong>
       {principal && (
         <div>
@@ -345,9 +342,14 @@ function DiagnosticosPrint({ principal, relacionados, e }) {
 function Section({ title, text }) {
   if (!String(text || "").trim()) return null;
   return (
-    <div>
+    <div className="print-text-block">
       <strong>{title}</strong>
-      <div style={{ whiteSpace: "pre-wrap" }}>{text}</div>
+      <div
+        className="print-text-block-inner"
+        style={{ whiteSpace: "pre-wrap" }}
+      >
+        {text}
+      </div>
     </div>
   );
 }
@@ -356,8 +358,8 @@ function labelType(t) {
   return t === "first_visit"
     ? "Primera vez/ingreso"
     : t === "follow_up"
-    ? "Control/seguimiento"
-    : "Procedimiento menor";
+      ? "Control/seguimiento"
+      : "Procedimiento menor";
 }
 
 function Prescriptions({ encounterId }) {
@@ -374,7 +376,7 @@ function Prescriptions({ encounterId }) {
   if (!rows.length) return null;
 
   return (
-    <div>
+    <div className="print-text-block">
       <strong>Fórmula médica</strong>
       <ul>
         {rows.map((rx) => {
@@ -427,7 +429,7 @@ function Procedures({ encounterId }) {
   if (!rows.length) return null;
 
   return (
-    <div>
+    <div className="print-text-block">
       <strong>Procedimientos</strong>
       <ul>
         {rows.map((pr) => (

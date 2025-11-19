@@ -133,7 +133,16 @@ hr {
   margin: 0 auto;
   background: #fff;
   color: #000;
-  text-align: justify; /* texto justificado en impresiones */
+}
+
+/* Bloques de texto justificado en impresión */
+.print-text-block {
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.print-text-block-inner {
+  text-align: justify;
 }
 
 /* Layout helpers */
@@ -274,7 +283,7 @@ hr {
   min-height: 90px;
 }
 
-/* -------- Print rules (expand all sections; footer text only) -------- */
+/* -------- Reglas de impresión -------- */
 
 @media print {
   .no-print {
@@ -297,13 +306,4 @@ hr {
   .section-body {
     display: block !important;
   }
-
-  /* Footer comentado (si se desea, puede agregarse un elemento .print-footer en React)
-  .print-footer {
-    position: fixed;
-    right: 16px;
-    bottom: 8px;
-    font-size: 9px;
-    color: #444;
-  } */
 }

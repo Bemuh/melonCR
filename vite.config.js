@@ -6,5 +6,10 @@ export default defineConfig({
   plugins: [react()],
   base: './',                 // <-- important for file:// in Electron
   server: { port: 5173 },
-  build: { outDir: 'dist' }
+  build: { outDir: 'dist' },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './vitest.setup.js',
+  }
 })
