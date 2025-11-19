@@ -32,4 +32,6 @@ Thumbs.db
 
 src/config/doctor.json
 src/config/FullColor.png
+src/config/favicon.ico
+src/config/logo.png
 dist/index.html

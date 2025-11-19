@@ -68,6 +68,7 @@
           ]
         }
       ],
+      "icon": "src/config/favicon.ico",
       "signAndEditExecutable": false
     }
   }
