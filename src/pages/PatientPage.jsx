@@ -10,6 +10,7 @@ import {
 import Diagnoses from "../components/Diagnoses.jsx";
 import Prescriptions from "../components/Prescriptions.jsx";
 import Procedures from "../components/Procedures.jsx";
+import Modal from "../components/Modal.jsx";
 
 const isElectron =
   typeof window !== "undefined" && !!window.electronAPI;
@@ -22,6 +23,7 @@ export default function PatientPage() {
   const [encounters, setEncounters] = useState([]);
   const [activeEncounterId, setActiveEncounterId] = useState(null);
   const [encounter, setEncounter] = useState(null);
+  const [showNoRxModal, setShowNoRxModal] = useState(false);
 
   // counters to mark sections empty/full
   const [counts, setCounts] = useState({ dx: 0, rx: 0, pr: 0 });
@@ -249,9 +251,7 @@ export default function PatientPage() {
               );
               const count = Number(r[0]?.c || 0);
               if (!count) {
-                alert(
-                  "No hay medicamentos registrados en la fórmula médica para esta atención."
-                );
+                setShowNoRxModal(true);
                 return;
               }
               navigate(
@@ -499,6 +499,16 @@ export default function PatientPage() {
           </SectionCard>
         )}
       </div>
+
+      {showNoRxModal && (
+        <Modal
+          title="Fórmula vacía"
+          onClose={() => setShowNoRxModal(false)}
+        >
+          No hay medicamentos registrados en la fórmula médica para esta
+          atención.
+        </Modal>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { openDb, exec } from "../db/index.js";
+import Modal from "../components/Modal.jsx";
 import {
   DoctorHeader,
   formatYMD,
@@ -115,6 +116,16 @@ export default function PrintPrescription() {
   const [encounter, setEncounter] = useState(null);
   const [prescriptions, setPrescriptions] = useState([]);
   const [diagnoses, setDiagnoses] = useState([]);
+  const [modal, setModal] = useState({
+    open: false,
+    title: "",
+    content: "",
+    onConfirm: null,
+  });
+
+  function showModal({ title, content }) {
+    setModal({ open: true, title, content, onConfirm: () => setModal({ ...modal, open: false }) });
+  }
 
   // Fixed timestamp for this print job (footer)
   const [printedAt] = useState(() =>
@@ -166,7 +177,10 @@ export default function PrintPrescription() {
           })
           .catch((err) => {
             console.error("Error exportando PDF:", err);
-            alert("No se pudo exportar la fórmula a PDF.");
+            showModal({
+              title: "Error de exportación",
+              content: "No se pudo exportar la fórmula a PDF.",
+            });
             navigate(-1);
           });
       } else {
@@ -413,6 +427,18 @@ export default function PrintPrescription() {
         </div>
       ))}
 
+      <div className="print-footer-text">
+        Generado el {isoToBogotaText(new Date().toISOString())}
+      </div>
+
+      {modal.open && (
+        <Modal
+          title={modal.title}
+          onClose={modal.onConfirm}
+        >
+          {modal.content}
+        </Modal>
+      )}
     </div>
   );
 }

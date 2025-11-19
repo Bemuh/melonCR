@@ -95,7 +95,7 @@ export function exportFile() {
 /** Ask the user for a fixed backup file path, then write current DB immediately. */
 export async function chooseBackupFile() {
   if (!('showSaveFilePicker' in window)) {
-    alert('El navegador no soporta elegir archivo fijo. Usando descarga manual.');
+    console.warn('El navegador no soporta elegir archivo fijo. Usando descarga manual.');
     exportFile();
     return false;
   }

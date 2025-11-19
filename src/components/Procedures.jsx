@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { exec, run } from '../db/index.js';
+import Modal from './Modal.jsx';
 
 export default function Procedures({ encounter, onCountChange }) {
   const [list, setList] = useState([]);
@@ -16,6 +17,17 @@ export default function Procedures({ encounter, onCountChange }) {
     consent_obtained: false,
   });
 
+  const [modal, setModal] = useState({
+    open: false,
+    title: "",
+    content: "",
+    onConfirm: null,
+  });
+
+  function showModal({ title, content }) {
+    setModal({ open: true, title, content, onConfirm: () => setModal({ ...modal, open: false }) });
+  }
+
   function reload() {
     const rows = exec(
       'SELECT * FROM procedures WHERE encounter_id=$id',
@@ -31,7 +43,10 @@ export default function Procedures({ encounter, onCountChange }) {
 
   async function add() {
     if (!pr.name) {
-      alert('Nombre del procedimiento');
+      showModal({
+        title: "Datos incompletos",
+        content: "Nombre del procedimiento es obligatorio.",
+      });
       return;
     }
 
@@ -211,6 +226,15 @@ export default function Procedures({ encounter, onCountChange }) {
           </li>
         ))}
       </ul>
+
+      {modal.open && (
+        <Modal
+          title={modal.title}
+          onClose={modal.onConfirm}
+        >
+          {modal.content}
+        </Modal>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { exec, run } from '../db/index.js';
+import Modal from './Modal.jsx';
 
 export default function Prescriptions({ encounter, onCountChange }) {
   const [list, setList] = useState([]);
@@ -10,6 +11,17 @@ export default function Prescriptions({ encounter, onCountChange }) {
     duration_days: '',
     indications: '',
   });
+
+  const [modal, setModal] = useState({
+    open: false,
+    title: "",
+    content: "",
+    onConfirm: null,
+  });
+
+  function showModal({ title, content }) {
+    setModal({ open: true, title, content, onConfirm: () => setModal({ ...modal, open: false }) });
+  }
 
   // Load prescriptions for this encounter
   function reload() {
@@ -53,9 +65,10 @@ export default function Prescriptions({ encounter, onCountChange }) {
     } = rx;
 
     if (!name || !dose_per_take || !freq_hours || !duration_days) {
-      alert(
-        'Nombre, cantidad por toma, frecuencia (horas) y duración (días) son obligatorios.'
-      );
+      showModal({
+        title: "Datos incompletos",
+        content: "Nombre, cantidad por toma, frecuencia (horas) y duración (días) son obligatorios.",
+      });
       return;
     }
 
@@ -65,9 +78,10 @@ export default function Prescriptions({ encounter, onCountChange }) {
       duration_days
     );
     if (!quantity_total) {
-      alert(
-        'No se pudo calcular la cantidad total. Verifique la cantidad por toma, la frecuencia (horas) y la duración (días).'
-      );
+      showModal({
+        title: "Error de cálculo",
+        content: "No se pudo calcular la cantidad total. Verifique la cantidad por toma, la frecuencia (horas) y la duración (días).",
+      });
       return;
     }
 
@@ -266,6 +280,15 @@ export default function Prescriptions({ encounter, onCountChange }) {
           );
         })}
       </ul>
+
+      {modal.open && (
+        <Modal
+          title={modal.title}
+          onClose={modal.onConfirm}
+        >
+          {modal.content}
+        </Modal>
+      )}
     </div>
   );
 }

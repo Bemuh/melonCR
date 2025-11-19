@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { openDb, exec } from "../db/index.js";
+import Modal from "../components/Modal.jsx";
 import { isoToBogotaText } from "../utils.js";
 import { DoctorHeader, formatPrintDateTime } from "./PrintShared.jsx";
 
@@ -15,6 +16,16 @@ export default function PrintView() {
 
   const [patient, setPatient] = useState(null);
   const [encounters, setEncounters] = useState([]);
+  const [modal, setModal] = useState({
+    open: false,
+    title: "",
+    content: "",
+    onConfirm: null,
+  });
+
+  function showModal({ title, content }) {
+    setModal({ open: true, title, content, onConfirm: () => setModal({ ...modal, open: false }) });
+  }
 
   // Timestamp fijo para este trabajo de impresión (por si luego se usa en footer)
   const [printedAt] = useState(() => formatPrintDateTime(new Date()));
@@ -27,12 +38,12 @@ export default function PrintView() {
   useEffect(() => {
     openDb().then(() => {
       const p =
-        exec(`SELECT * FROM patients WHERE id=$id`, {
+        exec(`SELECT * FROM patients WHERE id = $id`, {
           $id: patientId,
         })[0] || null;
 
       const e = exec(
-        `SELECT * FROM encounters WHERE patient_id=$id ORDER BY occurred_at ASC`,
+        `SELECT * FROM encounters WHERE patient_id = $id ORDER BY occurred_at ASC`,
         { $id: patientId }
       );
 
@@ -57,7 +68,10 @@ export default function PrintView() {
         })
         .catch((err) => {
           console.error("Error exportando PDF:", err);
-          alert("No se pudo exportar la historia a PDF.");
+          showModal({
+            title: "Error de exportación",
+            content: "No se pudo exportar la historia a PDF.",
+          });
           navigate(-1);
         });
 
@@ -139,6 +153,15 @@ export default function PrintView() {
         {encounters.map((e) => (
           <EncounterBlock key={e.id} e={e} />
         ))}
+
+        {modal.open && (
+          <Modal
+            title={modal.title}
+            onClose={modal.onConfirm}
+          >
+            {modal.content}
+          </Modal>
+        )}
       </div>
     </div>
   );
@@ -148,7 +171,7 @@ function EncounterBlock({ e }) {
   const vit = e.vitals_json ? JSON.parse(e.vitals_json) : {};
 
   const rows = exec(
-    `SELECT * FROM diagnoses WHERE encounter_id=$id ORDER BY is_primary DESC`,
+    `SELECT * FROM diagnoses WHERE encounter_id = $id ORDER BY is_primary DESC`,
     { $id: e.id }
   );
 
@@ -367,7 +390,7 @@ function Prescriptions({ encounterId }) {
 
   useEffect(() => {
     const r = exec(
-      `SELECT * FROM prescriptions WHERE encounter_id=$id`,
+      `SELECT * FROM prescriptions WHERE encounter_id = $id`,
       { $id: encounterId }
     );
     setRows(r);
@@ -385,11 +408,11 @@ function Prescriptions({ encounterId }) {
           const days = rx.duration_days;
 
           const partes = [];
-          if (rx.dose) partes.push(`${rx.dose}`);
+          if (rx.dose) partes.push(`${rx.dose} `);
           if (freq) partes.push(`cada ${freq} horas`);
           if (days)
             partes.push(
-              `durante ${days} día${Number(days) === 1 ? "" : "s"}`
+              `durante ${days} día${Number(days) === 1 ? "" : "s"} `
             );
 
           const frase =
@@ -405,7 +428,7 @@ function Prescriptions({ encounterId }) {
                 {total &&
                   ` Cantidad total: ${total} unidad(es).`}
                 {rx.indications &&
-                  ` Indicaciones: ${rx.indications}`}
+                  ` Indicaciones: ${rx.indications} `}
               </div>
             </li>
           );
@@ -420,7 +443,7 @@ function Procedures({ encounterId }) {
 
   useEffect(() => {
     const r = exec(
-      `SELECT * FROM procedures WHERE encounter_id=$id`,
+      `SELECT * FROM procedures WHERE encounter_id = $id`,
       { $id: encounterId }
     );
     setRows(r);
