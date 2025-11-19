@@ -1,12 +1,15 @@
 // src/print/PrintPrescription.jsx
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { openDb, exec } from "../db/index.js";
 import {
   DoctorHeader,
   formatYMD,
   formatPrintDateTime,
 } from "./PrintShared.jsx";
+
+const isElectron =
+  typeof window !== "undefined" && !!window.electronAPI;
 
 /** Add days to ISO date */
 function addDays(iso, days) {
@@ -106,6 +109,7 @@ function buildCopies(prescriptions, encounter) {
 export default function PrintPrescription() {
   const { encounterId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [patient, setPatient] = useState(null);
   const [encounter, setEncounter] = useState(null);
@@ -147,16 +151,42 @@ export default function PrintPrescription() {
       setPrescriptions(rx || []);
       setDiagnoses(dx || []);
 
-      setTimeout(() => window.print(), 400);
+      const searchParams = new URLSearchParams(location.search);
+      const isPdfExport =
+        isElectron && searchParams.get("mode") === "pdf";
+
+      if (isPdfExport && window.electronAPI?.exportHistoryPdf) {
+        const suggestedName = `formula_${pat.document_type || "DOC"}_${pat.document_number || pat.id
+          }.pdf`;
+
+        window.electronAPI
+          .exportHistoryPdf({ suggestedName })
+          .then(() => {
+            navigate(-1);
+          })
+          .catch((err) => {
+            console.error("Error exportando PDF:", err);
+            alert("No se pudo exportar la fórmula a PDF.");
+            navigate(-1);
+          });
+      } else {
+        setTimeout(() => window.print(), 400);
+      }
     });
-  }, [encounterId]);
+  }, [encounterId, location.search, navigate]);
 
   // After printing, go back to previous screen
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const isPdfExport =
+      isElectron && searchParams.get("mode") === "pdf";
+
+    if (isPdfExport) return;
+
     const onAfter = () => navigate(-1);
     window.addEventListener("afterprint", onAfter);
     return () => window.removeEventListener("afterprint", onAfter);
-  }, [navigate]);
+  }, [navigate, location.search]);
 
   if (!encounter || !patient) {
     return (
@@ -290,8 +320,8 @@ export default function PrintPrescription() {
                     </div>
                     <div>
                       {it.dose &&
-                      it.freq &&
-                      it.days ? (
+                        it.freq &&
+                        it.days ? (
                         <>
                           Usar{" "}
                           <strong>
@@ -307,24 +337,24 @@ export default function PrintPrescription() {
                             {it.days}{" "}
                             día
                             {it.days >
-                            1
+                              1
                               ? "s"
                               : ""}
                           </strong>
                           {it.total !==
                             "" && (
-                            <>
-                              {" "}
-                              — cantidad
-                              total
-                              estimada:{" "}
-                              <strong>
-                                {
-                                  it.total
-                                }
-                              </strong>
-                            </>
-                          )}
+                              <>
+                                {" "}
+                                — cantidad
+                                total
+                                estimada:{" "}
+                                <strong>
+                                  {
+                                    it.total
+                                  }
+                                </strong>
+                              </>
+                            )}
                           .
                         </>
                       ) : (

@@ -223,12 +223,7 @@ export default function PatientPage() {
           </Link>
 
           {/* Historia completa */}
-          <button
-            className="ghost"
-            onClick={() => navigate("/print/" + patient.id)}
-          >
-            Imprimir historia completa
-          </button>
+
 
           {/* Exportar PDF sólo en escritorio */}
           {isElectron && (
@@ -259,7 +254,11 @@ export default function PatientPage() {
                 );
                 return;
               }
-              navigate("/rx/" + activeEncounterId);
+              navigate(
+                "/rx/" +
+                activeEncounterId +
+                (isElectron ? "?mode=pdf" : "")
+              );
             }}
           >
             Imprimir fórmula médica
