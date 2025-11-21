@@ -9,6 +9,7 @@ import {
   formatPrintDateTime,
   DoctorFooter
 } from "./PrintShared.jsx";
+import { getEncounterLabel } from "../utils.js";
 
 const isElectron =
   typeof window !== "undefined" && !!window.electronAPI;
@@ -171,7 +172,9 @@ export default function PrintPrescription() {
         const now = new Date();
         const dateStr = now.toISOString().slice(0, 10);
         const timeStr = now.toTimeString().slice(0, 5).replace(":", "");
-        const filename = `Formula_${pat?.document_number || "Doc"}_${dateStr}_${timeStr}.pdf`;
+        const typeLabel = getEncounterLabel(enc.encounter_type).replace(/\//g, '-').replace(/\s+/g, '_');
+        const dateLabel = enc.occurred_at.slice(0, 10);
+        const filename = `Formula_${pat?.document_number || "Doc"}_${pat?.first_name}_${pat?.last_name}_${dateLabel}_${typeLabel}.pdf`;
 
         window.electronAPI
           .exportHistoryPdf({
@@ -406,23 +409,23 @@ export default function PrintPrescription() {
           </div>
 
           {/* Footer Section */}
-          <DoctorFooter />
-
-          <div
-            style={{
-              marginTop: "8px",
-              fontSize: "10px",
-              color: "#555",
-            }}
-          >
-            Esta fórmula es válida
-            únicamente con firma del
-            profesional tratante. Cada
-            copia corresponde al
-            período de tratamiento
-            indicado para renovación de
-            la medicación.
-          </div>
+          <DoctorFooter>
+            <div
+              style={{
+                marginTop: "8px",
+                fontSize: "10px",
+                color: "#555",
+              }}
+            >
+              Esta fórmula es válida
+              únicamente con firma del
+              profesional tratante. Cada
+              copia corresponde al
+              período de tratamiento
+              indicado para renovación de
+              la medicación.
+            </div>
+          </DoctorFooter>
         </div>
       ))}
 

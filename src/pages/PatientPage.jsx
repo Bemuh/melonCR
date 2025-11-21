@@ -45,13 +45,17 @@ export default function PatientPage() {
       setPatient(p);
       setEncounters(e);
 
-      if (e.length) {
+      // Check URL param first
+      const urlEncounterId = new URLSearchParams(location.search).get("encounterId");
+      if (urlEncounterId && e.find(enc => enc.id === urlEncounterId)) {
+        setActiveEncounterId(urlEncounterId);
+      } else if (e.length) {
         setActiveEncounterId(e[0].id);
       } else if (p) {
         createNewEncounter(p);
       }
     });
-  }, [patientId]);
+  }, [patientId, location.search]);
 
   // Load active encounter + counts
   useEffect(() => {
@@ -287,11 +291,14 @@ export default function PatientPage() {
             Atención
             <select
               value={activeEncounterId || ""}
-              onChange={(e) =>
-                e.target.value === "__new__"
-                  ? createNewEncounter(patient)
-                  : setActiveEncounterId(e.target.value)
-              }
+              onChange={(e) => {
+                if (e.target.value === "__new__") {
+                  createNewEncounter(patient);
+                } else {
+                  setActiveEncounterId(e.target.value);
+                  navigate("?encounterId=" + e.target.value, { replace: true });
+                }
+              }}
             >
               <option value="__new__">➕ Nueva atención</option>
               {encounters.map((e) => (

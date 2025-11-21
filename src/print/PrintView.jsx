@@ -243,102 +243,126 @@ function EncounterBlock({ e }) {
       vit.peso ||
       vit.bmi);
 
+  const isMinorProc = e.encounter_type === 'minor_procedure';
+
   return (
     <div
       style={{
         marginBottom: "14px",
+        fontSize: "13px", // Standardized font size
       }}
     >
-      <h2>
+      <h2 style={{ fontSize: "1.2rem" }}>
         {isoToBogotaText(e.occurred_at)} — {e.cas_code} —{" "}
         {labelType(e.encounter_type)}
       </h2>
 
-      {hasObjective && (
-        <div className="print-text-block">
-          <strong>Objetivo:</strong> {e.objective}
-        </div>
-      )}
+      {isMinorProc ? (
+        <>
+          {/* Minor Procedure Order: Procedures -> Attachments -> Diagnoses -> Prescriptions */}
+          <Procedures encounterId={e.id} />
+          <Attachments encounterId={e.id} notes={e.procedures_notes} />
 
-      {hasChief && (
-        <Section
-          title="Motivo de consulta"
-          text={e.chief_complaint}
-        />
-      )}
+          {hasDx && (
+            <DiagnosticosPrint
+              principal={principal}
+              relacionados={rel}
+              e={e}
+            />
+          )}
 
-      {hasHpi && (
-        <Section
-          title="Enfermedad actual"
-          text={e.hpi}
-        />
-      )}
+          <Prescriptions encounterId={e.id} />
+        </>
+      ) : (
+        <>
+          {/* Standard Order */}
+          {hasObjective && (
+            <div className="print-text-block">
+              <strong>Objetivo:</strong> {e.objective}
+            </div>
+          )}
 
-      {hasAnt && (
-        <Section
-          title="Antecedentes"
-          text={e.antecedentes}
-        />
-      )}
+          {hasChief && (
+            <Section
+              title="Motivo de consulta"
+              text={e.chief_complaint}
+            />
+          )}
 
-      {hasVitals && (
-        <Section
-          title="Signos vitales"
-          text={
-            "TA " +
-            (vit.taS || "-") +
-            "/" +
-            (vit.taD || "-") +
-            " FC " +
-            (vit.fc || "-") +
-            " FR " +
-            (vit.fr || "-") +
-            " Temp " +
-            (vit.temp || "-") +
-            " SatO₂ " +
-            (vit.spo2 || "-") +
-            " Talla " +
-            (vit.talla || "-") +
-            " Peso " +
-            (vit.peso || "-") +
-            " IMC " +
-            (vit.bmi || "-")
-          }
-        />
-      )}
+          {hasHpi && (
+            <Section
+              title="Enfermedad actual"
+              text={e.hpi}
+            />
+          )}
 
-      {hasPE && (
-        <Section
-          title="Examen físico"
-          text={e.physical_exam}
-        />
-      )}
+          {hasAnt && (
+            <Section
+              title="Antecedentes"
+              text={e.antecedentes}
+            />
+          )}
 
-      {hasImp && (
-        <Section
-          title="Análisis"
-          text={e.impression}
-        />
-      )}
+          {hasVitals && (
+            <Section
+              title="Signos vitales"
+              text={
+                "TA " +
+                (vit.taS || "-") +
+                "/" +
+                (vit.taD || "-") +
+                " FC " +
+                (vit.fc || "-") +
+                " FR " +
+                (vit.fr || "-") +
+                " Temp " +
+                (vit.temp || "-") +
+                " SatO₂ " +
+                (vit.spo2 || "-") +
+                " Talla " +
+                (vit.talla || "-") +
+                " Peso " +
+                (vit.peso || "-") +
+                " IMC " +
+                (vit.bmi || "-")
+              }
+            />
+          )}
 
-      {hasPlan && (
-        <Section
-          title="Plan / Conducta"
-          text={e.plan}
-        />
-      )}
+          {hasPE && (
+            <Section
+              title="Examen físico"
+              text={e.physical_exam}
+            />
+          )}
 
-      {hasDx && (
-        <DiagnosticosPrint
-          principal={principal}
-          relacionados={rel}
-          e={e}
-        />
-      )}
+          {hasImp && (
+            <Section
+              title="Análisis"
+              text={e.impression}
+            />
+          )}
 
-      <Prescriptions encounterId={e.id} />
-      <Procedures encounterId={e.id} />
-      <Attachments encounterId={e.id} notes={e.procedures_notes} />
+          {hasPlan && (
+            <Section
+              title="Plan / Conducta"
+              text={e.plan}
+            />
+          )}
+
+          {hasDx && (
+            <DiagnosticosPrint
+              principal={principal}
+              relacionados={rel}
+              e={e}
+            />
+          )}
+
+          <Prescriptions encounterId={e.id} />
+          <Procedures encounterId={e.id} />
+          <Attachments encounterId={e.id} notes={e.procedures_notes} />
+        </>
+      )}
 
       <hr />
     </div>

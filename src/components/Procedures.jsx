@@ -255,10 +255,10 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
               {attachments.map(att => (
                 <li key={att.id} style={{ display: 'flex', alignItems: 'center', marginBottom: 6, background: '#f5f5f5', padding: '4px 8px', borderRadius: 4 }}>
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{att.file_name}</span>
-                  <button className="small" onClick={() => downloadAttachment(att.id, att.file_name)} style={{ marginRight: 8 }}>
+                  <button className="small" onClick={() => downloadAttachment(att.id, att.file_name)} style={{ marginRight: 8, backgroundColor: '#007bff', color: 'white', border: 'none' }}>
                     Descargar
                   </button>
-                  <button className="small danger" onClick={() => delAttachment(att.id)}>
+                  <button className="small danger" onClick={() => delAttachment(att.id)} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none' }}>
                     Eliminar
                   </button>
                 </li>

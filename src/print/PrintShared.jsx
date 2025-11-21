@@ -64,7 +64,7 @@ export function formatPrintDateTime(d) {
 /**
  * Standard footer with signature and doctor info.
  */
-export function DoctorFooter({ marginBottom = 0 }) {
+export function DoctorFooter({ marginBottom = 0, children }) {
   return (
     <div style={{ marginTop: 'auto', paddingTop: '20px', marginBottom: marginBottom, pageBreakInside: 'avoid' }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -79,6 +79,7 @@ export function DoctorFooter({ marginBottom = 0 }) {
         <div style={{ fontSize: '0.85rem' }}>{doctor.specialty}</div>
         <div style={{ fontSize: '0.85rem' }}>{doctor.professionalId}</div>
       </div>
+      {children}
     </div>
   );
 }
