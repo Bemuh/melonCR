@@ -7,6 +7,7 @@ import {
   DoctorHeader,
   formatYMD,
   formatPrintDateTime,
+  DoctorFooter
 } from "./PrintShared.jsx";
 
 const isElectron =
@@ -230,188 +231,182 @@ export default function PrintPrescription() {
                 ? "auto"
                 : "always",
             fontSize: "13px",
+            minHeight: "95vh",
+            display: "flex",
+            flexDirection: "column"
           }}
         >
-          {/* Shared doctor header */}
-          <DoctorHeader marginBottom={8} />
+          <div style={{ flex: 1 }}>
+            {/* Shared doctor header */}
+            <DoctorHeader marginBottom={8} />
 
-          {/* Title + date */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              marginBottom: "6px",
-            }}
-          >
-            <h1
+            {/* Title + date */}
+            <div
               style={{
-                margin: 0,
-                fontSize: "1.4rem",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                marginBottom: "6px",
               }}
             >
-              FÓRMULA MÉDICA
-            </h1>
-            <div>Fecha: {copy.labelDate}</div>
-          </div>
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: "1.4rem",
+                }}
+              >
+                FÓRMULA MÉDICA
+              </h1>
+              <div>Fecha: {copy.labelDate}</div>
+            </div>
 
-          {/* Patient & encounter info */}
-          <div
-            style={{
-              marginTop: "4px",
-              marginBottom: "10px",
-            }}
-          >
-            <div>
-              <strong>Paciente:</strong>{" "}
-              {patient.first_name}{" "}
-              {patient.last_name}
-            </div>
-            <div>
-              <strong>Documento:</strong>{" "}
-              {patient.document_type}{" "}
-              {patient.document_number}
-            </div>
-            <div>
-              <strong>Teléfono:</strong>{" "}
-              {patient.phone || "-"}{" "}
-              <strong>Género:</strong>{" "}
-              {patient.sex || "-"}{" "}
-              <strong>Fecha nacimiento:</strong>{" "}
-              {patient.birth_date || "-"}
-            </div>
-            <div>
-              <strong>Fecha y hora de atención:</strong>{" "}
-              {formatYMD(
-                encounter.occurred_at
+            {/* Patient & encounter info */}
+            <div
+              style={{
+                marginTop: "4px",
+                marginBottom: "10px",
+              }}
+            >
+              <div>
+                <strong>Paciente:</strong>{" "}
+                {patient.first_name}{" "}
+                {patient.last_name}
+              </div>
+              <div>
+                <strong>Documento:</strong>{" "}
+                {patient.document_type}{" "}
+                {patient.document_number}
+              </div>
+              <div>
+                <strong>Teléfono:</strong>{" "}
+                {patient.phone || "-"}{" "}
+                <strong>Género:</strong>{" "}
+                {patient.sex || "-"}{" "}
+                <strong>Fecha nacimiento:</strong>{" "}
+                {patient.birth_date || "-"}
+              </div>
+              <div>
+                <strong>Fecha y hora de atención:</strong>{" "}
+                {formatYMD(
+                  encounter.occurred_at
+                )}
+              </div>
+              <div>
+                <strong>CAS:</strong>{" "}
+                {encounter.cas_code || "-"}
+              </div>
+              {principalDx && (
+                <div>
+                  <strong>
+                    Diagnóstico principal:
+                  </strong>{" "}
+                  {principalDx.code}{" "}
+                  {principalDx.label}
+                </div>
               )}
             </div>
-            <div>
-              <strong>CAS:</strong>{" "}
-              {encounter.cas_code || "-"}
-            </div>
-            {principalDx && (
-              <div>
-                <strong>
-                  Diagnóstico principal:
-                </strong>{" "}
-                {principalDx.code}{" "}
-                {principalDx.label}
+
+            <hr />
+
+            {/* Prescription body */}
+            {copy.items.length === 0 ? (
+              <div
+                style={{ marginTop: "12px" }}
+              >
+                <em>
+                  No hay medicamentos
+                  registrados para esta
+                  fórmula.
+                </em>
+              </div>
+            ) : (
+              <div
+                style={{ marginTop: "10px" }}
+              >
+                {copy.items.map(
+                  (it, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        marginBottom:
+                          "6px",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      <div>
+                        <strong>
+                          {it.name}
+                        </strong>{" "}
+                        {it.total !==
+                          "" &&
+                          `(# ${it.total})`}
+                      </div>
+                      <div>
+                        {it.dose &&
+                          it.freq &&
+                          it.days ? (
+                          <>
+                            Usar{" "}
+                            <strong>
+                              {it.dose}
+                            </strong>{" "}
+                            cada{" "}
+                            <strong>
+                              {it.freq}{" "}
+                              horas
+                            </strong>{" "}
+                            durante{" "}
+                            <strong>
+                              {it.days}{" "}
+                              día
+                              {it.days >
+                                1
+                                ? "s"
+                                : ""}
+                            </strong>
+                            {it.total !==
+                              "" && (
+                                <>
+                                  {" "}
+                                  — cantidad
+                                  total
+                                  estimada:{" "}
+                                  <strong>
+                                    {
+                                      it.total
+                                    }
+                                  </strong>
+                                </>
+                              )}
+                            .
+                          </>
+                        ) : (
+                          <>
+                            Posología
+                            según
+                            indicación
+                            médica.
+                          </>
+                        )}
+                        {it.indications && (
+                          <>
+                            {" "}
+                            Indicaciones:{" "}
+                            {
+                              it.indications
+                            }
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )
+                )}
               </div>
             )}
           </div>
 
-          <hr />
-
-          {/* Prescription body */}
-          {copy.items.length === 0 ? (
-            <div
-              style={{ marginTop: "12px" }}
-            >
-              <em>
-                No hay medicamentos
-                registrados para esta
-                fórmula.
-              </em>
-            </div>
-          ) : (
-            <div
-              style={{ marginTop: "10px" }}
-            >
-              {copy.items.map(
-                (it, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      marginBottom:
-                        "6px",
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    <div>
-                      <strong>
-                        {it.name}
-                      </strong>{" "}
-                      {it.total !==
-                        "" &&
-                        `(# ${it.total})`}
-                    </div>
-                    <div>
-                      {it.dose &&
-                        it.freq &&
-                        it.days ? (
-                        <>
-                          Usar{" "}
-                          <strong>
-                            {it.dose}
-                          </strong>{" "}
-                          cada{" "}
-                          <strong>
-                            {it.freq}{" "}
-                            horas
-                          </strong>{" "}
-                          durante{" "}
-                          <strong>
-                            {it.days}{" "}
-                            día
-                            {it.days >
-                              1
-                              ? "s"
-                              : ""}
-                          </strong>
-                          {it.total !==
-                            "" && (
-                              <>
-                                {" "}
-                                — cantidad
-                                total
-                                estimada:{" "}
-                                <strong>
-                                  {
-                                    it.total
-                                  }
-                                </strong>
-                              </>
-                            )}
-                          .
-                        </>
-                      ) : (
-                        <>
-                          Posología
-                          según
-                          indicación
-                          médica.
-                        </>
-                      )}
-                      {it.indications && (
-                        <>
-                          {" "}
-                          Indicaciones:{" "}
-                          {
-                            it.indications
-                          }
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )
-              )}
-            </div>
-          )}
-
-          <div
-            style={{
-              marginTop: "24px",
-            }}
-          >
-            <div>
-              ______________________________
-            </div>
-            <div>
-              Firma y sello del
-              profesional
-            </div>
-          </div>
+          {/* Footer Section */}
+          <DoctorFooter />
 
           <div
             style={{

@@ -4,7 +4,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { openDb, exec } from "../db/index.js";
 import Modal from "../components/Modal.jsx";
 import { isoToBogotaText } from "../utils.js";
-import { DoctorHeader, formatPrintDateTime } from "./PrintShared.jsx";
+import { DoctorHeader, formatPrintDateTime, DoctorFooter } from "./PrintShared.jsx";
 
 const isElectron =
   typeof window !== "undefined" && !!window.electronAPI;
@@ -33,6 +33,7 @@ export default function PrintView() {
   const searchParams = new URLSearchParams(location.search);
   const isPdfExport =
     isElectron && searchParams.get("mode") === "pdf";
+  const targetEncounterId = searchParams.get("encounterId");
 
   // Carga de datos
   useEffect(() => {
@@ -42,26 +43,46 @@ export default function PrintView() {
           $id: patientId,
         })[0] || null;
 
-      const e = exec(
-        `SELECT * FROM encounters WHERE patient_id = $id ORDER BY occurred_at ASC`,
-        { $id: patientId }
-      );
+      let query = `SELECT * FROM encounters WHERE patient_id = $id`;
+      const params = { $id: patientId };
+
+      if (targetEncounterId) {
+        query += ` AND id = $eid`;
+        params.$eid = targetEncounterId;
+      }
+
+      query += ` ORDER BY occurred_at ASC`;
+
+      const e = exec(query, params);
 
       setPatient(p);
       setEncounters(e || []);
     });
-  }, [patientId]);
+  }, [patientId, targetEncounterId]);
 
   // Disparar impresión o exportación a PDF cuando ya hay datos
   useEffect(() => {
-    if (!patient) return;
+    if (!patient || encounters.length === 0) return;
 
     // Desktop: exportar PDF con Electron
     if (isPdfExport && isElectron && window.electronAPI?.exportHistoryPdf) {
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10);
       const timeStr = now.toTimeString().slice(0, 5).replace(":", "");
-      const filename = `Historia_${patient?.document_number || "Doc"}_${dateStr}_${timeStr}.pdf`;
+
+      // Construct filename with more info
+      let filename = `Historia_${patient?.document_number || "Doc"}`;
+
+      if (encounters.length === 1) {
+        const enc = encounters[0];
+        const typeLabel = labelType(enc.encounter_type).replace(/\//g, '-').replace(/\s+/g, '_');
+        const dateLabel = enc.occurred_at.slice(0, 10);
+        filename += `_${patient.first_name}_${patient.last_name}_${dateLabel}_${typeLabel}`;
+      } else {
+        filename += `_${dateStr}_${timeStr}`;
+      }
+
+      filename += `.pdf`;
 
       window.electronAPI
         .exportHistoryPdf({
@@ -85,7 +106,7 @@ export default function PrintView() {
     // Navegador: diálogo de impresión del sistema
     const handle = setTimeout(() => window.print(), 400);
     return () => clearTimeout(handle);
-  }, [patient, isPdfExport, navigate]);
+  }, [patient, encounters, isPdfExport, navigate]);
 
   // Volver atrás después de imprimir (sólo cuando NO es modo PDF interno)
   useEffect(() => {
@@ -109,8 +130,8 @@ export default function PrintView() {
   }
 
   return (
-    <div className="print-page">
-      <div style={{ padding: "16px" }}>
+    <div className="print-page" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div style={{ padding: "16px", flex: 1 }}>
         {/* Encabezado compartido médico + logo */}
         <DoctorHeader marginBottom={12} />
 
@@ -166,6 +187,11 @@ export default function PrintView() {
             {modal.content}
           </Modal>
         )}
+      </div>
+
+      {/* Footer at the bottom of the page */}
+      <div style={{ padding: "16px" }}>
+        <DoctorFooter />
       </div>
     </div>
   );

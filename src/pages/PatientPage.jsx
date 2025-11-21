@@ -247,7 +247,7 @@ export default function PatientPage() {
           {isElectron && (
             <button
               className="secondary"
-              onClick={() => navigate("/print/" + patient.id + "?mode=pdf")}
+              onClick={() => navigate("/print/" + patient.id + "?mode=pdf" + (activeEncounterId ? "&encounterId=" + activeEncounterId : ""))}
             >
               Exportar historia
             </button>
@@ -483,6 +483,22 @@ export default function PatientPage() {
               mode="procedures_only"
               onCountChange={(n) =>
                 setCounts((c) => ({ ...c, pr: n }))
+              }
+            />
+          </SectionCard>
+        )}
+
+        {/* Diagnósticos (Also for Minor Procedures now) */}
+        {isMinorProc && (
+          <SectionCard
+            title="Diagnósticos (CIE-10)"
+            empty={empties.dx}
+            defaultOpen={!empties.dx}
+          >
+            <Diagnoses
+              encounter={encounter}
+              onCountChange={(n) =>
+                setCounts((c) => ({ ...c, dx: n }))
               }
             />
           </SectionCard>

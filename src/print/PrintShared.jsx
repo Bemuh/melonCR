@@ -1,6 +1,6 @@
-// src/print/PrintShared.jsx
 import doctor from "../config/doctor.json";
 import logo from "../config/FullColor.png";
+import firma from "../config/firma.PNG";
 
 /**
  * Common doctor header for print views.
@@ -59,4 +59,26 @@ export function formatPrintDateTime(d) {
   const mi = pad(d.getMinutes());
   const ss = pad(d.getSeconds());
   return `${dd}-${mm}-${yyyy} ${hh}:${mi}:${ss}`;
+}
+
+/**
+ * Standard footer with signature and doctor info.
+ */
+export function DoctorFooter({ marginBottom = 0 }) {
+  return (
+    <div style={{ marginTop: 'auto', paddingTop: '20px', marginBottom: marginBottom, pageBreakInside: 'avoid' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <img
+          src={firma}
+          alt="Firma"
+          style={{ height: '80px', objectFit: 'contain', marginBottom: '-10px' }}
+          onError={(e) => e.target.style.display = 'none'}
+        />
+        <div style={{ width: '250px', borderBottom: '1px solid #000', marginBottom: '4px' }}></div>
+        <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.9rem' }}>{doctor.name}</div>
+        <div style={{ fontSize: '0.85rem' }}>{doctor.specialty}</div>
+        <div style={{ fontSize: '0.85rem' }}>{doctor.professionalId}</div>
+      </div>
+    </div>
+  );
 }

@@ -3,12 +3,13 @@ import { exec, run } from '../db/index.js';
 import Modal from './Modal.jsx';
 
 export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
-  const [list, setList] = useState([]);
+
   const [notes, setNotes] = useState(encounter.procedures_notes || '');
   const [attachments, setAttachments] = useState([]);
 
-  // Form state
+  // Single procedure state
   const [pr, setPr] = useState({
+    id: null,
     name: '',
     code: '',
     description: '',
@@ -26,6 +27,11 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
     setModal({ open: true, title, content, onConfirm: () => setModal({ ...modal, open: false }) });
   }
 
+  const onCountChangeRef = useRef(onCountChange);
+  useEffect(() => {
+    onCountChangeRef.current = onCountChange;
+  }, [onCountChange]);
+
   // Reload data
   const reload = useCallback(() => {
     // Procedures
@@ -34,8 +40,39 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
         'SELECT * FROM procedures WHERE encounter_id=$id',
         { $id: encounter.id }
       );
-      setList(rows);
-      onCountChange?.(rows.length);
+
+      if (rows.length > 0) {
+        // Load the first one
+        const first = rows[0];
+        setPr({
+          id: first.id,
+          name: first.name,
+          code: first.code,
+          description: first.description,
+          consent_obtained: first.consent_obtained === 1
+        });
+        onCountChangeRef.current?.(1);
+      } else {
+        // Create a new empty one immediately so we have an ID to update
+        const newId = crypto.randomUUID();
+        run(
+          `INSERT INTO procedures (
+            id, encounter_id, name, code, description, consent_obtained
+          ) VALUES ($id, $e, '', '', '', 0)`,
+          {
+            $id: newId,
+            $e: encounter.id
+          }
+        );
+        setPr({
+          id: newId,
+          name: '',
+          code: '',
+          description: '',
+          consent_obtained: false
+        });
+        onCountChangeRef.current?.(0); // Technically 0 filled
+      }
     }
 
     // Attachments & Notes
@@ -48,10 +85,10 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
       setAttachments(atts);
       // If in attachments_only mode, report count here
       if (mode === 'attachments_only') {
-        onCountChange?.(atts.length);
+        onCountChangeRef.current?.(atts.length);
       }
     }
-  }, [encounter.id, onCountChange, mode]);
+  }, [encounter.id, mode]);
 
   useEffect(() => {
     reload();
@@ -61,33 +98,26 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
   }, [encounter.id, reload, mode]);
 
   // Actions
-  async function add() {
-    if (!pr.name) {
-      showModal({ title: "Datos incompletos", content: "El nombre del procedimiento es obligatorio." });
-      return;
-    }
+  async function updateSingle(name, description, consent) {
+    // Optimistic update
+    setPr(prev => ({ ...prev, name, description, consent_obtained: consent }));
 
-    await run(
-      `INSERT INTO procedures (
-        id, encounter_id, name, code, description, consent_obtained
-      ) VALUES ($id, $e, $n, $c, $d, $co)`,
-      {
-        $id: crypto.randomUUID(),
-        $e: encounter.id,
-        $n: pr.name,
-        $c: pr.code || '', // Optional now
-        $d: pr.description,
-        $co: pr.consent_obtained ? 1 : 0,
+    // DB update
+    if (pr.id) {
+      await run(
+        `UPDATE procedures SET name=$n, description=$d, consent_obtained=$co WHERE id=$id`,
+        {
+          $n: name,
+          $d: description,
+          $co: consent ? 1 : 0,
+          $id: pr.id
+        }
+      );
+      // Update count if name is present
+      if (mode !== 'attachments_only') {
+        onCountChange?.(name ? 1 : 0);
       }
-    );
-
-    setPr({ name: '', code: '', description: '', consent_obtained: false });
-    reload();
-  }
-
-  async function del(id) {
-    await run('DELETE FROM procedures WHERE id=$id', { $id: id });
-    reload();
+    }
   }
 
   async function saveNotes(newNotes) {
@@ -144,62 +174,46 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
 
   return (
     <div>
-      {/* 1. Procedures Form & List */}
+      {/* 1. Procedures Form (Single Procedure Mode) */}
       {mode !== 'attachments_only' && (
         <>
-          <div className="diag-grid">
-            <div className="diag-title">Nuevo Procedimiento</div>
+          {/* Removed "Nuevo Procedimiento" title as requested */}
 
-            <div className="input-wrap">
+          <div className="diag-grid">
+            <div className="input-wrap" style={{ width: '100%' }}>
               <input
                 placeholder="Nombre del procedimiento"
                 value={pr.name}
-                onChange={e => setPr({ ...pr, name: e.target.value })}
+                onChange={e => updateSingle(e.target.value, pr.description, pr.consent_obtained)}
               />
             </div>
-
-            {/* Removed CUPS code input as requested */}
           </div>
 
           <div className="row" style={{ marginTop: 8 }}>
             <label style={{ flex: 1 }}>
-              Descripción
-              <input
+              Nota de procedimiento
+              <textarea
+                rows={3}
                 value={pr.description}
-                onChange={e => setPr({ ...pr, description: e.target.value })}
-                placeholder="Detalles adicionales..."
+                onChange={e => updateSingle(pr.name, e.target.value, pr.consent_obtained)}
+                placeholder="Detalles del procedimiento..."
+                style={{ width: '100%', marginTop: 4 }}
               />
             </label>
+          </div>
+
+          <div className="row" style={{ marginTop: 8 }}>
             <label className="inline-center no-grow">
               <input
                 type="checkbox"
                 checked={pr.consent_obtained}
-                onChange={e => setPr({ ...pr, consent_obtained: e.target.checked })}
+                onChange={e => updateSingle(pr.name, pr.description, e.target.checked)}
               />
               Consentimiento obtenido
             </label>
           </div>
 
-          <button onClick={add} style={{ marginTop: 8 }}>Agregar Procedimiento</button>
-
-          <hr />
-
-          <div style={{ marginBottom: 20 }}>
-            <h3>Procedimientos Registrados</h3>
-            {list.length === 0 && <p style={{ color: '#666' }}>No hay procedimientos.</p>}
-            <ul>
-              {list.map(it => (
-                <li key={it.id} style={{ marginBottom: 6 }}>
-                  <strong>{it.name}</strong>
-                  {it.description && <div><small>{it.description}</small></div>}
-                  {it.consent_obtained === 1 && <div style={{ color: 'green', fontSize: '0.85em' }}>✓ Consentimiento obtenido</div>}
-                  <button className="ghost" onClick={() => del(it.id)} style={{ marginLeft: 0, marginTop: 4 }}>
-                    Eliminar
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* Removed "Agregar Procedimiento" button and "Procedimientos Registrados" list */}
         </>
       )}
 
