@@ -67,9 +67,10 @@ export default function Intake() {
 
     // ❶ Block duplicates by document (show existing instead)
     const dupByDoc = exec(
-      `SELECT id FROM patients WHERE document_type=$t AND document_number=$n`,
-      { $t: form.document_type, $n: form.document_number }
+      `SELECT id FROM patients WHERE document_number=$n`,
+      { $n: form.document_number }
     );
+
     if (dupByDoc.length) {
       showModal({
         title: "Paciente existente",
@@ -88,21 +89,13 @@ export default function Intake() {
       { $f: form.first_name, $l: form.last_name, $b: form.birth_date || '' }
     );
     if (dupByNameDob.length) {
-      // if (!confirm('Existe alguien con mismo nombre/fecha. ¿Crear de todas formas?')) return;
-      // We need to pause execution here, but since we can't block, we return and handle the continuation in the callback.
-      // However, refactoring to callback-based flow is complex.
-      // A simpler approach for this specific case:
-      // Show modal, and if confirmed, call a separate function `doCreate`.
-      // But `create` is async and has local vars.
-      // Let's wrap the insertion logic in `doCreate` and call it from here or the modal.
-
       showModal({
         title: "Posible duplicado",
         content: "Existe alguien con mismo nombre/fecha. ¿Crear de todas formas?",
         onCancel: closeModal,
         onConfirm: () => {
           closeModal();
-          doCreate(id, ts);
+          doCreate(uid(), nowIso());
         },
       });
       return;

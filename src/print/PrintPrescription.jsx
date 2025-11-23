@@ -268,6 +268,7 @@ export default function PrintPrescription() {
                 marginTop: "4px",
                 marginBottom: "10px",
               }}
+              data-testid="print-rx-patient-info"
             >
               <div>
                 <strong data-testid="print-rx-patient-name">Paciente:</strong>{" "}

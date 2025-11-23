@@ -235,7 +235,7 @@ export default function PatientPage() {
     <div className="container">
       {/* Toolbar */}
       <div className="card toolbar">
-        <div>
+        <div data-testid="existing-patient-summary">
           <div className="kicker">Paciente</div>
           <div>
             <strong>{fullName(patient)}</strong> —{" "}
@@ -244,17 +244,28 @@ export default function PatientPage() {
         </div>
         <div className="no-print" style={{ display: "flex", gap: "8px" }}>
           <Link to="/">
-            <button className="ghost">Volver al inicio</button>
+            <button className="ghost" data-testid="btn-back-home">
+              Volver al inicio
+            </button>
           </Link>
 
           {/* Exportar PDF sólo en escritorio */}
-          <button
-            className="secondary"
-            onClick={() => navigate("/print/" + patient.id + (isElectron ? "?mode=pdf" : "") + (activeEncounterId ? "&encounterId=" + activeEncounterId : ""))}
-            data-testid="btn-export-history"
-          >
-            {isElectron ? "Exportar historia" : "Ver impresión"}
-          </button>
+        <button
+          className="secondary"
+          onClick={async () => {
+            await persistNow();
+            navigate(
+              "/print/" +
+                patient.id +
+                "?mode=pdf" +
+                (activeEncounterId ? "&encounterId=" + activeEncounterId : "")
+            );
+          }}
+          data-testid="btn-export-history"
+        >
+          Exportar historia
+        </button>
+
 
           {/* Fórmula médica solo del encuentro activo */}
           {activeEncounterId && (

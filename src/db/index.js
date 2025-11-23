@@ -38,7 +38,6 @@ export async function openDb() {
 
     return db;
   } catch (err) {
-    console.error('sql.js init error:', err);
     throw err;
   }
 }
@@ -74,10 +73,8 @@ export function exec(sql, params = {}) {
 }
 
 /** Run mutation (INSERT/UPDATE/DELETE). Persists afterwards. */
-export function run(sql, params = {}) {
-  const stmt = db.prepare(sql);
-  stmt.run(params);
-  stmt.free();
+export function run(sql, params) {
+  const res = db.run(sql, params);
   return persist();
 }
 
