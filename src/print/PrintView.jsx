@@ -145,13 +145,14 @@ export default function PrintView() {
             marginBottom: "12px",
             fontSize: "0.95rem",
           }}
+          data-testid="print-patient-info"
         >
           <div>
-            <strong>Paciente:</strong> {patient.first_name}{" "}
+            <strong data-testid="print-patient-name">Paciente:</strong> {patient.first_name}{" "}
             {patient.last_name}
           </div>
           <div>
-            <strong>Documento:</strong> {patient.document_type}{" "}
+            <strong data-testid="print-patient-doc">Documento:</strong> {patient.document_type}{" "}
             {patient.document_number}
           </div>
           {patient.phone && (
@@ -251,6 +252,7 @@ function EncounterBlock({ e }) {
         marginBottom: "14px",
         fontSize: "13px", // Standardized font size
       }}
+      data-testid="print-encounter-block"
     >
       <h2 style={{ fontSize: "1.2rem" }}>
         {isoToBogotaText(e.occurred_at)} — {e.cas_code} —{" "}
@@ -286,6 +288,7 @@ function EncounterBlock({ e }) {
             <Section
               title="Motivo de consulta"
               text={e.chief_complaint}
+              data-testid="print-section-chief-complaint"
             />
           )}
 
@@ -293,6 +296,7 @@ function EncounterBlock({ e }) {
             <Section
               title="Enfermedad actual"
               text={e.hpi}
+              data-testid="print-section-hpi"
             />
           )}
 
@@ -326,6 +330,7 @@ function EncounterBlock({ e }) {
                 " IMC " +
                 (vit.bmi || "-")
               }
+              data-testid="print-section-vitals"
             />
           )}
 
@@ -333,6 +338,7 @@ function EncounterBlock({ e }) {
             <Section
               title="Examen físico"
               text={e.physical_exam}
+              data-testid="print-section-physical-exam"
             />
           )}
 
@@ -340,6 +346,7 @@ function EncounterBlock({ e }) {
             <Section
               title="Análisis"
               text={e.impression}
+              data-testid="print-section-analysis"
             />
           )}
 
@@ -347,6 +354,7 @@ function EncounterBlock({ e }) {
             <Section
               title="Plan / Conducta"
               text={e.plan}
+              data-testid="print-section-plan"
             />
           )}
 
@@ -376,7 +384,7 @@ function DiagnosticosPrint({ principal, relacionados, e }) {
     "";
 
   return (
-    <div className="print-text-block" style={{ margin: "6px 0" }}>
+    <div className="print-text-block" style={{ margin: "6px 0" }} data-testid="print-dx-list">
       <strong>Diagnósticos</strong>
       {principal && (
         <div>
@@ -417,10 +425,10 @@ function DiagnosticosPrint({ principal, relacionados, e }) {
   );
 }
 
-function Section({ title, text }) {
+function Section({ title, text, "data-testid": testId }) {
   if (!String(text || "").trim()) return null;
   return (
-    <div className="print-text-block">
+    <div className="print-text-block" data-testid={testId}>
       <strong>{title}</strong>
       <div
         className="print-text-block-inner"

@@ -1,4 +1,3 @@
-// src/print/PrintPrescription.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { openDb, exec } from "../db/index.js";
@@ -271,7 +270,7 @@ export default function PrintPrescription() {
               }}
             >
               <div>
-                <strong>Paciente:</strong>{" "}
+                <strong data-testid="print-rx-patient-name">Paciente:</strong>{" "}
                 {patient.first_name}{" "}
                 {patient.last_name}
               </div>
@@ -335,6 +334,7 @@ export default function PrintPrescription() {
                           "6px",
                         lineHeight: 1.4,
                       }}
+                      data-testid="print-rx-item"
                     >
                       <div>
                         <strong>

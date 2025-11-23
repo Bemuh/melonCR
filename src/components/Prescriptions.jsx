@@ -164,6 +164,7 @@ export default function Prescriptions({ encounter, onCountChange }) {
               setRx(prev => ({ ...prev, name: e.target.value }))
             }
             placeholder="Ej: Ibuprofeno 400 mg"
+            data-testid="input-rx-name"
           />
         </label>
 
@@ -178,6 +179,7 @@ export default function Prescriptions({ encounter, onCountChange }) {
               }))
             }
             placeholder="Ej: 1 (tableta, sobre, ml...)"
+            data-testid="input-rx-dose"
           />
         </label>
 
@@ -192,6 +194,7 @@ export default function Prescriptions({ encounter, onCountChange }) {
               }))
             }
             placeholder="Ej: 8"
+            data-testid="input-rx-freq"
           />
         </label>
 
@@ -206,6 +209,7 @@ export default function Prescriptions({ encounter, onCountChange }) {
               }))
             }
             placeholder="Ej: 5"
+            data-testid="input-rx-days"
           />
         </label>
 
@@ -234,7 +238,9 @@ export default function Prescriptions({ encounter, onCountChange }) {
       </label>
 
       <div className="row" style={{ marginTop: 12 }} />
-      <button onClick={add}>Agregar</button>
+      <div className="row" style={{ marginTop: 12 }} />
+      <button onClick={add} data-testid="btn-add-rx">Agregar</button>
+      <hr />
       <hr />
 
       <ul>

@@ -22,6 +22,7 @@ export default function Modal({
                 justifyContent: "center",
                 zIndex: 9999,
             }}
+            data-testid="modal-container"
         >
             <div
                 style={{
@@ -43,11 +44,11 @@ export default function Modal({
                     }}
                 >
                     {onCancel && (
-                        <button className="ghost" onClick={onCancel}>
+                        <button className="ghost" onClick={onCancel} data-testid="btn-modal-cancel">
                             {cancelText}
                         </button>
                     )}
-                    <button onClick={onClose}>{confirmText}</button>
+                    <button onClick={onClose} data-testid="btn-modal-confirm">{confirmText}</button>
                 </div>
             </div>
         </div>

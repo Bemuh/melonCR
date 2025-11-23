@@ -108,7 +108,9 @@ export default function Intake() {
       return;
     }
 
-    await doCreate(id, ts);
+    const newId = uid();
+    const ts = nowIso();
+    await doCreate(newId, ts);
   }
 
   async function doCreate(id, ts) {
@@ -141,10 +143,10 @@ export default function Intake() {
     <div className="card">
       <h1>Ingreso</h1>
       <div className="row">
-        <button className={mode === 'new' ? '' : 'ghost'} onClick={() => setMode('new')}>
+        <button className={mode === 'new' ? '' : 'ghost'} onClick={() => setMode('new')} data-testid="btn-new-patient">
           Paciente nuevo
         </button>
-        <button className={mode === 'existing' ? '' : 'ghost'} onClick={() => setMode('existing')}>
+        <button className={mode === 'existing' ? '' : 'ghost'} onClick={() => setMode('existing')} data-testid="btn-existing-patient">
           Paciente existente
         </button>
       </div>
@@ -158,11 +160,12 @@ export default function Intake() {
                 value={q}
                 onChange={e => setQ(e.target.value)}
                 placeholder="CC, nombre o apellido"
+                data-testid="input-search"
               />
             </label>
 
             <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>
-              <button onClick={search} style={{ alignSelf: 'center' }}>
+              <button onClick={search} style={{ alignSelf: 'center' }} data-testid="btn-search">
                 Buscar
               </button>
             </div>
@@ -171,7 +174,7 @@ export default function Intake() {
           <ul>
             {results.map(r => (
               <li key={r.id} style={{ margin: '6px 0' }}>
-                <button onClick={() => navigate('/patient/' + r.id)}>
+                <button onClick={() => navigate('/patient/' + r.id)} data-testid={`list-result-item-${r.id}`}>
                   {r.full_name} — {r.document_type} {r.document_number}
                 </button>
               </li>
@@ -190,6 +193,7 @@ export default function Intake() {
               <select
                 value={form.document_type}
                 onChange={e => setForm({ ...form, document_type: e.target.value })}
+                data-testid="input-doc-type"
               >
                 <option>CC</option>
                 <option>CE</option>
@@ -203,6 +207,7 @@ export default function Intake() {
               <input
                 value={form.document_number}
                 onChange={e => setForm({ ...form, document_number: e.target.value })}
+                data-testid="input-doc-number"
               />
             </label>
 
@@ -211,6 +216,7 @@ export default function Intake() {
               <input
                 value={form.first_name}
                 onChange={e => setForm({ ...form, first_name: e.target.value })}
+                data-testid="input-first-name"
               />
             </label>
 
@@ -219,6 +225,7 @@ export default function Intake() {
               <input
                 value={form.last_name}
                 onChange={e => setForm({ ...form, last_name: e.target.value })}
+                data-testid="input-last-name"
               />
             </label>
           </div>
@@ -227,7 +234,7 @@ export default function Intake() {
             {/* ❷ Sexo as a dropdown */}
             <label>
               Sexo
-              <select value={form.sex} onChange={e => setForm({ ...form, sex: e.target.value })}>
+              <select value={form.sex} onChange={e => setForm({ ...form, sex: e.target.value })} data-testid="select-sex">
                 <option value="">—</option>
                 <option>Hombre</option>
                 <option>Mujer</option>
@@ -241,12 +248,13 @@ export default function Intake() {
                 type="date"
                 value={form.birth_date}
                 onChange={e => setForm({ ...form, birth_date: e.target.value })}
+                data-testid="input-birth-date"
               />
             </label>
 
             <label>
               Teléfono
-              <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
+              <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} data-testid="input-phone" />
             </label>
 
             <label>
@@ -254,18 +262,19 @@ export default function Intake() {
               <input
                 value={form.address}
                 onChange={e => setForm({ ...form, address: e.target.value })}
+                data-testid="input-address"
               />
             </label>
 
             <label>
               Ciudad
-              <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} />
+              <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} data-testid="input-city" />
             </label>
           </div>
 
           <div className="row" style={{ marginTop: 12 }} />
           <div className="row">
-            <button onClick={create}>Crear y continuar</button>
+            <button onClick={create} data-testid="btn-create">Crear y continuar</button>
           </div>
         </div>
       )}

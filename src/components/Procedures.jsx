@@ -185,6 +185,7 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
                 placeholder="Nombre del procedimiento"
                 value={pr.name}
                 onChange={e => updateSingle(e.target.value, pr.description, pr.consent_obtained)}
+                data-testid="input-procedure-name"
               />
             </div>
           </div>
@@ -198,6 +199,7 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
                 onChange={e => updateSingle(pr.name, e.target.value, pr.consent_obtained)}
                 placeholder="Detalles del procedimiento..."
                 style={{ width: '100%', marginTop: 4 }}
+                data-testid="input-procedure-description"
               />
             </label>
           </div>
@@ -208,6 +210,7 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
                 type="checkbox"
                 checked={pr.consent_obtained}
                 onChange={e => updateSingle(pr.name, pr.description, e.target.checked)}
+                data-testid="checkbox-procedure-consent"
               />
               Consentimiento obtenido
             </label>
@@ -233,6 +236,7 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
                 onChange={e => saveNotes(e.target.value)}
                 placeholder="Ingrese notas o texto adjunto..."
                 style={{ width: '100%', marginTop: 4 }}
+                data-testid="input-procedure-notes"
               />
             </label>
           </div>
@@ -246,6 +250,7 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
                 accept="image/*,application/pdf"
                 onChange={handleFileUploadBetter}
                 style={{ marginTop: 4 }}
+                data-testid="input-procedure-file"
               />
             </label>
           </div>

@@ -248,14 +248,13 @@ export default function PatientPage() {
           </Link>
 
           {/* Exportar PDF sólo en escritorio */}
-          {isElectron && (
-            <button
-              className="secondary"
-              onClick={() => navigate("/print/" + patient.id + "?mode=pdf" + (activeEncounterId ? "&encounterId=" + activeEncounterId : ""))}
-            >
-              Exportar historia
-            </button>
-          )}
+          <button
+            className="secondary"
+            onClick={() => navigate("/print/" + patient.id + (isElectron ? "?mode=pdf" : "") + (activeEncounterId ? "&encounterId=" + activeEncounterId : ""))}
+            data-testid="btn-export-history"
+          >
+            {isElectron ? "Exportar historia" : "Ver impresión"}
+          </button>
 
           {/* Fórmula médica solo del encuentro activo */}
           {activeEncounterId && (
@@ -277,6 +276,7 @@ export default function PatientPage() {
                   (isElectron ? "?mode=pdf" : "")
                 );
               }}
+              data-testid="btn-export-rx"
             >
               Exportar fórmula médica
             </button>
@@ -299,6 +299,7 @@ export default function PatientPage() {
                   navigate("?encounterId=" + e.target.value, { replace: true });
                 }
               }}
+              data-testid="select-encounter"
             >
               <option value="__new__">➕ Nueva atención</option>
               {encounters.map((e) => (
@@ -322,6 +323,7 @@ export default function PatientPage() {
                 );
                 setEncounter({ ...encounter, encounter_type: v });
               }}
+              data-testid="select-encounter-type"
             >
               <option value="first_visit">Primera vez / ingreso</option>
               <option value="follow_up">Control / seguimiento</option>
@@ -343,6 +345,7 @@ export default function PatientPage() {
                 );
                 setEncounter({ ...encounter, occurred_at: newIso });
               }}
+              data-testid="input-encounter-date"
             />
           </label>
 
@@ -370,6 +373,7 @@ export default function PatientPage() {
           title="Datos del paciente"
           empty={empties.datos}
           defaultOpen={!empties.datos}
+          data-testid="section-patient-data"
         >
           <PatientFields patient={patient} setPatient={setPatient} />
         </SectionCard>
@@ -381,12 +385,14 @@ export default function PatientPage() {
               title="Motivo de consulta"
               empty={empties.motivo}
               defaultOpen={!empties.motivo}
+              data-testid="section-chief-complaint"
             >
               <TextAreaAuto
                 encounter={encounter}
                 field="chief_complaint"
                 label="Motivo de consulta"
                 setEncounter={setEncounter}
+                data-testid="input-chief-complaint"
               />
             </SectionCard>
 
@@ -394,12 +400,14 @@ export default function PatientPage() {
               title="Enfermedad actual"
               empty={empties.enfermedad}
               defaultOpen={!empties.enfermedad}
+              data-testid="section-hpi"
             >
               <TextAreaAuto
                 encounter={encounter}
                 field="hpi"
                 label="Enfermedad actual (HPI)"
                 setEncounter={setEncounter}
+                data-testid="input-hpi"
               />
             </SectionCard>
 
@@ -420,6 +428,7 @@ export default function PatientPage() {
               title="Signos vitales"
               empty={empties.vitales}
               defaultOpen={!empties.vitales}
+              data-testid="section-vitals"
             >
               <Vitals encounter={encounter} setEncounter={setEncounter} />
             </SectionCard>
@@ -428,12 +437,14 @@ export default function PatientPage() {
               title="Examen físico"
               empty={empties.examen}
               defaultOpen={!empties.examen}
+              data-testid="section-physical-exam"
             >
               <TextAreaAuto
                 encounter={encounter}
                 field="physical_exam"
                 label="Examen físico"
                 setEncounter={setEncounter}
+                data-testid="input-physical-exam"
               />
             </SectionCard>
 
@@ -441,12 +452,14 @@ export default function PatientPage() {
               title="Análisis"
               empty={empties.analisis}
               defaultOpen={!empties.analisis}
+              data-testid="section-analysis"
             >
               <TextAreaAuto
                 encounter={encounter}
                 field="impression"
                 label="Análisis"
                 setEncounter={setEncounter}
+                data-testid="input-analysis"
               />
             </SectionCard>
 
@@ -454,12 +467,14 @@ export default function PatientPage() {
               title="Plan / Conducta"
               empty={empties.plan}
               defaultOpen={!empties.plan}
+              data-testid="section-plan"
             >
               <TextAreaAuto
                 encounter={encounter}
                 field="plan"
                 label="Plan"
                 setEncounter={setEncounter}
+                data-testid="input-plan"
               />
             </SectionCard>
 
@@ -484,6 +499,7 @@ export default function PatientPage() {
             title="Procedimientos"
             empty={empties.pr}
             defaultOpen={!empties.pr}
+            data-testid="section-procedures"
           >
             <Procedures
               encounter={encounter}
@@ -569,11 +585,12 @@ function SectionCard({
   children,
   defaultOpen = false,
   empty = false,
+  "data-testid": testId,
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="card">
+    <div className="card" data-testid={testId}>
       <button
         type="button"
         className="collapser"
@@ -662,7 +679,7 @@ function PatientFields({ patient, setPatient }) {
   );
 }
 
-function TextAreaAuto({ encounter, setEncounter, field, label }) {
+function TextAreaAuto({ encounter, setEncounter, field, label, "data-testid": testId }) {
   return (
     <label>
       {label}
@@ -676,6 +693,7 @@ function TextAreaAuto({ encounter, setEncounter, field, label }) {
           );
           setEncounter({ ...encounter, [field]: v });
         }}
+        data-testid={testId}
       />
     </label>
   );
@@ -728,6 +746,7 @@ function Vitals({ encounter, setEncounter }) {
         <input
           defaultValue={state[name]}
           onBlur={(e) => save({ [name]: e.target.value })}
+          data-testid={`input-vitals-${name}`}
         />
       </label>
     );

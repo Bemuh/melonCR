@@ -74,7 +74,7 @@ export default function Diagnoses({
     if (rows[0]?.diagnosis_type) {
       setDtype(
         rows[0].diagnosis_type ||
-          "Impresión Diagnóstica"
+        "Impresión Diagnóstica"
       );
     } else {
       setDtype("Impresión Diagnóstica");
@@ -165,8 +165,8 @@ export default function Diagnoses({
             .toUpperCase();
           const label = String(
             it.label ||
-              it.description ||
-              ""
+            it.description ||
+            ""
           ).trim();
           if (!code || !label)
             return null;
@@ -239,6 +239,7 @@ export default function Diagnoses({
           findByNameSubstr
         }
         persistAll={persistAll}
+        data-testid="dx-principal"
       />
       <DxRow
         title="Diagnóstico Relacionado nro 1:"
@@ -252,6 +253,7 @@ export default function Diagnoses({
           findByNameSubstr
         }
         persistAll={persistAll}
+        data-testid="dx-rel1"
       />
       <DxRow
         title="Diagnóstico Relacionado nro 2:"
@@ -265,6 +267,7 @@ export default function Diagnoses({
           findByNameSubstr
         }
         persistAll={persistAll}
+        data-testid="dx-rel2"
       />
       <DxRow
         title="Diagnóstico Relacionado nro 3:"
@@ -278,6 +281,7 @@ export default function Diagnoses({
           findByNameSubstr
         }
         persistAll={persistAll}
+        data-testid="dx-rel3"
       />
 
       {/* Tipo de diagnóstico */}
@@ -295,6 +299,7 @@ export default function Diagnoses({
                 dtype: v,
               });
             }}
+            data-testid="select-dx-type"
           >
             <option>
               1 - Impresión Diagnóstica
@@ -325,6 +330,7 @@ export default function Diagnoses({
                 finalidad: v,
               });
             }}
+            data-testid="select-dx-finalidad"
           >
             <option value="">
               Seleccione finalidad…
@@ -354,6 +360,7 @@ export default function Diagnoses({
                 causa: v,
               });
             }}
+            data-testid="select-dx-causa"
           >
             <option value="">
               Seleccione causa externa…
@@ -377,6 +384,7 @@ export default function Diagnoses({
       />
       <button
         onClick={() => persistAll()}
+        data-testid="btn-save-dx"
       >
         Guardar diagnósticos
       </button>
@@ -393,6 +401,7 @@ function DxRow({
   findByCodePrefix,
   findByNameSubstr,
   persistAll,
+  "data-testid": testId,
 }) {
   return (
     <div className="diag-grid">
@@ -426,6 +435,7 @@ function DxRow({
             {it.code} — {it.label}
           </>
         )}
+        data-testid={`${testId}-code`}
       />
 
       {/* Name search */}
@@ -454,6 +464,7 @@ function DxRow({
             {it.code} — {it.label}
           </>
         )}
+        data-testid={`${testId}-label`}
       />
     </div>
   );
@@ -467,6 +478,7 @@ function AutoSuggest({
   dataFn,
   renderItem,
   placeholder,
+  "data-testid": testId,
 }) {
   const [q, setQ] = useState(value ?? "");
   const [items, setItems] = useState([]);
@@ -488,7 +500,7 @@ function AutoSuggest({
       setItems(next);
       setOpen(
         focusedRef.current &&
-          next.length > 0
+        next.length > 0
       );
     },
     [dataFn]
@@ -529,6 +541,7 @@ function AutoSuggest({
         onChange={handleChange}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        data-testid={testId}
       />
       {open && (
         <ul
