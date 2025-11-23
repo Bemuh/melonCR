@@ -251,7 +251,6 @@ export default function PatientPage() {
 
           {/* Exportar PDF sólo en escritorio */}
           <button
-            className="secondary"
             onClick={async () => {
               await persistNow();
               navigate(
