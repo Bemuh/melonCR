@@ -36,3 +36,8 @@ src/config/favicon.ico
 src/config/logo.png
 src/config/firma.PNG
 dist/index.html
+
+test-results
+playwright-report
+test_output.txt
+dist
