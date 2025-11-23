@@ -250,21 +250,21 @@ export default function PatientPage() {
           </Link>
 
           {/* Exportar PDF sólo en escritorio */}
-        <button
-          className="secondary"
-          onClick={async () => {
-            await persistNow();
-            navigate(
-              "/print/" +
+          <button
+            className="secondary"
+            onClick={async () => {
+              await persistNow();
+              navigate(
+                "/print/" +
                 patient.id +
                 "?mode=pdf" +
                 (activeEncounterId ? "&encounterId=" + activeEncounterId : "")
-            );
-          }}
-          data-testid="btn-export-history"
-        >
-          Exportar historia
-        </button>
+              );
+            }}
+            data-testid="btn-export-history"
+          >
+            Exportar historia
+          </button>
 
 
           {/* Fórmula médica solo del encuentro activo */}
@@ -590,195 +590,10 @@ export default function PatientPage() {
   );
 }
 
-// ----- UI helpers -----
-function SectionCard({
-  title,
-  children,
-  defaultOpen = false,
-  empty = false,
-  "data-testid": testId,
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <div className="card" data-testid={testId}>
-      <button
-        type="button"
-        className="collapser"
-        aria-expanded={open}
-        onClick={async () => {
-          setOpen((o) => !o);
-          await persistNow();
-        }}
-      >
-        <span className="caret">{open ? "▾" : "▸"}</span>
-        <h2 className="section-title">
-          {title}
-          {empty && (
-            <span
-              className="warn-badge"
-              title="Sección sin completar"
-            />
-          )}
-        </h2>
-      </button>
-      {open && <div className="section-body">{children}</div>}
-    </div>
-  );
-}
-
-function PatientFields({ patient, setPatient }) {
-  return (
-    <div className="row">
-      <label>
-        Teléfono
-        <input
-          defaultValue={patient.phone || ""}
-          onBlur={async (e) => {
-            const v = e.target.value;
-            await run(
-              `UPDATE patients SET phone=$v, updated_at=$ua WHERE id=$id`,
-              { $v: v, $id: patient.id, $ua: nowIso() }
-            );
-            setPatient({ ...patient, phone: v });
-          }}
-        />
-      </label>
-      <label>
-        Email
-        <input
-          defaultValue={patient.email || ""}
-          onBlur={async (e) => {
-            const v = e.target.value;
-            await run(
-              `UPDATE patients SET email=$v, updated_at=$ua WHERE id=$id`,
-              { $v: v, $id: patient.id, $ua: nowIso() }
-            );
-            setPatient({ ...patient, email: v });
-          }}
-        />
-      </label>
-      <label>
-        Dirección
-        <input
-          defaultValue={patient.address || ""}
-          onBlur={async (e) => {
-            const v = e.target.value;
-            await run(
-              `UPDATE patients SET address=$v, updated_at=$ua WHERE id=$id`,
-              { $v: v, $id: patient.id, $ua: nowIso() }
-            );
-            setPatient({ ...patient, address: v });
-          }}
-        />
-      </label>
-      <label>
-        Ciudad
-        <input
-          defaultValue={patient.city || ""}
-          onBlur={async (e) => {
-            const v = e.target.value;
-            await run(
-              `UPDATE patients SET city=$v, updated_at=$ua WHERE id=$id`,
-              { $v: v, $id: patient.id, $ua: nowIso() }
-            );
-            setPatient({ ...patient, city: v });
-          }}
-        />
-      </label>
-    </div>
-  );
-}
-
-function TextAreaAuto({ encounter, setEncounter, field, label, "data-testid": testId }) {
-  return (
-    <label>
-      {label}
-      <textarea
-        defaultValue={encounter[field] || ""}
-        onBlur={async (e) => {
-          const v = e.target.value;
-          await run(
-            `UPDATE encounters SET ${field}=$v, updated_at=$ua WHERE id=$id`,
-            { $v: v, $id: encounter.id, $ua: nowIso() }
-          );
-          setEncounter({ ...encounter, [field]: v });
-        }}
-        data-testid={testId}
-      />
-    </label>
-  );
-}
-
-function Vitals({ encounter, setEncounter }) {
-  const v = encounter.vitals_json ? JSON.parse(encounter.vitals_json) : {};
-  const [state, setState] = useState({
-    taS: v.taS || "",
-    taD: v.taD || "",
-    fc: v.fc || "",
-    fr: v.fr || "",
-    temp: v.temp || "",
-    spo2: v.spo2 || "",
-    talla: v.talla || "",
-    peso: v.peso || "",
-    bmi: v.bmi || "",
-  });
-
-  function calcBMI(next) {
-    const talla = Number(next.talla || state.talla || 0);
-    const peso = Number(next.peso || state.peso || 0);
-    return peso && talla
-      ? (peso / (talla / 100) ** 2).toFixed(1)
-      : "";
-  }
-
-  async function save(next) {
-    const data = { ...state, ...next };
-    data.bmi = calcBMI(next);
-    await run(
-      `UPDATE encounters SET vitals_json=$v, updated_at=$ua WHERE id=$id`,
-      {
-        $v: JSON.stringify(data),
-        $id: encounter.id,
-        $ua: nowIso(),
-      }
-    );
-    setState(data);
-    setEncounter({
-      ...encounter,
-      vitals_json: JSON.stringify(data),
-    });
-  }
-
-  function field(name, labelText) {
-    return (
-      <label>
-        {labelText}
-        <input
-          defaultValue={state[name]}
-          onBlur={(e) => save({ [name]: e.target.value })}
-          data-testid={`input-vitals-${name}`}
-        />
-      </label>
-    );
-  }
-
-  return (
-    <div className="row">
-      {field("taS", "TA Sistólica")}
-      {field("taD", "TA Diastólica")}
-      {field("fc", "FC")}
-      {field("fr", "FR")}
-      {field("temp", "Temperatura °C")}
-      {field("spo2", "SatO₂ %")}
-      {field("talla", "Talla (cm)")}
-      {field("peso", "Peso (kg)")}
-      <div className="small">
-        IMC: <span className="badge">{state.bmi || "-"}</span>
-      </div>
-    </div>
-  );
-}
+import PatientFields from "../components/PatientFields.jsx";
+import SectionCard from "../components/SectionCard.jsx";
+import TextAreaAuto from "../components/TextAreaAuto.jsx";
+import Vitals from "../components/Vitals.jsx";
 
 function generateCAS() {
   const k = "cas_seq";
