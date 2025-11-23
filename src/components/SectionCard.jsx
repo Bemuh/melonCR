@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { persistNow } from '../db/index.js';
 
-export default function SectionCard({ title, children, defaultOpen = false, empty = false }) {
+export default function SectionCard({ title, children, defaultOpen = false, empty = false, "data-testid": testId }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="card">
+    <div className="card" data-testid={testId}>
       <button
         type="button"
         className="collapser"
