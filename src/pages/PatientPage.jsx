@@ -250,21 +250,21 @@ export default function PatientPage() {
           </Link>
 
           {/* Exportar PDF sólo en escritorio */}
-        <button
-          className="secondary"
-          onClick={async () => {
-            await persistNow();
-            navigate(
-              "/print/" +
+          <button
+            className="secondary"
+            onClick={async () => {
+              await persistNow();
+              navigate(
+                "/print/" +
                 patient.id +
                 "?mode=pdf" +
                 (activeEncounterId ? "&encounterId=" + activeEncounterId : "")
-            );
-          }}
-          data-testid="btn-export-history"
-        >
-          Exportar historia
-        </button>
+              );
+            }}
+            data-testid="btn-export-history"
+          >
+            Exportar historia
+          </button>
 
 
           {/* Fórmula médica solo del encuentro activo */}
@@ -544,6 +544,7 @@ export default function PatientPage() {
             title="Adjuntos"
             empty={empties.at}
             defaultOpen={!empties.at}
+            data-testid="section-attachments"
           >
             <Procedures
               encounter={encounter}
@@ -642,6 +643,7 @@ function PatientFields({ patient, setPatient }) {
             );
             setPatient({ ...patient, phone: v });
           }}
+          data-testid="input-patient-phone"
         />
       </label>
       <label>
@@ -656,6 +658,7 @@ function PatientFields({ patient, setPatient }) {
             );
             setPatient({ ...patient, email: v });
           }}
+          data-testid="input-patient-email"
         />
       </label>
       <label>
@@ -670,6 +673,7 @@ function PatientFields({ patient, setPatient }) {
             );
             setPatient({ ...patient, address: v });
           }}
+          data-testid="input-patient-address"
         />
       </label>
       <label>
@@ -684,6 +688,7 @@ function PatientFields({ patient, setPatient }) {
             );
             setPatient({ ...patient, city: v });
           }}
+          data-testid="input-patient-city"
         />
       </label>
     </div>

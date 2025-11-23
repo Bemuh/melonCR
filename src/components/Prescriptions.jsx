@@ -234,6 +234,7 @@ export default function Prescriptions({ encounter, onCountChange }) {
             }))
           }
           placeholder="Instrucciones adicionales para el paciente"
+          data-testid="input-rx-indications"
         />
       </label>
 
@@ -265,7 +266,7 @@ export default function Prescriptions({ encounter, onCountChange }) {
               : '';
 
           return (
-            <li key={it.id} style={{ marginBottom: 8 }}>
+            <li key={it.id} style={{ marginBottom: 8 }} data-testid={`list-rx-item-${it.id}`}>
               <div>
                 <strong>{it.active_ingredient}</strong>
               </div>
@@ -279,6 +280,7 @@ export default function Prescriptions({ encounter, onCountChange }) {
               <button
                 className="ghost"
                 onClick={() => del(it.id)}
+                data-testid={`btn-delete-rx-${it.id}`}
               >
                 Eliminar
               </button>

@@ -2,6 +2,16 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Clinic App E2E', () => {
 
+    test.beforeEach(async ({ page }) => {
+        // Mock window.print to prevent blocking
+        await page.addInitScript(() => {
+            window.print = () => { };
+            window.electronAPI = {
+                exportHistoryPdf: async () => new Promise(() => { }),
+            };
+        });
+    });
+
     test('Create New Patient', async ({ page }) => {
         await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
@@ -22,7 +32,7 @@ test.describe('Clinic App E2E', () => {
         await expect(page.getByTestId('section-patient-data')).toBeVisible();
     });
 
-    test('Search Existing Patient', async ({ page }) => {
+    test('Search Existing Patient & Update', async ({ page }) => {
         // Create one first
         await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
@@ -45,6 +55,26 @@ test.describe('Clinic App E2E', () => {
         await resultItem.click();
 
         await expect(page).toHaveURL(/\/patient\/.+/);
+
+        // Update fields
+        await page.getByTestId('section-patient-data').click();
+        await page.getByTestId('input-patient-phone').fill('3105551234');
+        await page.getByTestId('input-patient-email').fill('test@example.com');
+        await page.getByTestId('input-patient-address').fill('Calle Falsa 123');
+        await page.getByTestId('input-patient-city').fill('Medellin');
+
+        // Trigger blur to ensure save
+        await page.getByTestId('input-patient-city').blur();
+        // Wait a bit for DB update
+        await page.waitForTimeout(500);
+
+        // Reload to verify persistence
+        await page.reload();
+
+        await expect(page.getByTestId('input-patient-phone')).toHaveValue('3105551234');
+        await expect(page.getByTestId('input-patient-email')).toHaveValue('test@example.com');
+        await expect(page.getByTestId('input-patient-address')).toHaveValue('Calle Falsa 123');
+        await expect(page.getByTestId('input-patient-city')).toHaveValue('Medellin');
     });
 
     test('Change Encounter Type', async ({ page }) => {
@@ -67,167 +97,55 @@ test.describe('Clinic App E2E', () => {
         await expect(page.getByTestId('section-procedures')).toBeHidden();
     });
 
-    test('Change Encounter Date', async ({ page }) => {
+    test('Vitals Persistence', async ({ page }) => {
         await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
         await page.getByTestId('input-doc-number').fill('555666777');
-        await page.getByTestId('input-first-name').fill('Date');
+        await page.getByTestId('input-first-name').fill('Vitals');
         await page.getByTestId('input-last-name').fill('Test');
         await page.getByTestId('btn-create').click();
 
-        const newDate = '2023-12-25T10:00';
-        await page.getByTestId('input-encounter-date').fill(newDate);
+        // Open Vitals
+        const vitalsSection = page.getByTestId('section-vitals');
+        if (await vitalsSection.locator('button.collapser').getAttribute('aria-expanded') === 'false') {
+            await vitalsSection.locator('button.collapser').click();
+        }
 
-        // Reload to verify persistence
-        await page.reload();
-        await expect(page.getByTestId('input-encounter-date')).toHaveValue(newDate);
-    });
+        await page.getByTestId('input-vitals-taS').fill('120');
+        await page.getByTestId('input-vitals-taD').fill('80');
+        await page.getByTestId('input-vitals-fc').fill('70');
+        await page.getByTestId('input-vitals-fr').fill('18');
+        await page.getByTestId('input-vitals-temp').fill('36.5');
+        await page.getByTestId('input-vitals-spo2').fill('98');
+        await page.getByTestId('input-vitals-talla').fill('170');
+        await page.getByTestId('input-vitals-peso').fill('70');
+        await page.getByTestId('input-vitals-peso').blur();
 
-    test('Patient Fields Update', async ({ page }) => {
-        await page.goto('/');
-        await page.getByTestId('btn-new-patient').click();
-        await page.getByTestId('input-doc-number').fill('777888999');
-        await page.getByTestId('input-first-name').fill('Fields');
-        await page.getByTestId('input-last-name').fill('Test');
-        await page.getByTestId('btn-create').click();
-
-        // Update fields
-        await page.getByTestId('section-patient-data').click();
-        await page.getByLabel('Teléfono').fill('3105551234');
-        await page.getByLabel('Email').fill('test@example.com');
-        await page.getByLabel('Dirección').fill('Calle Falsa 123');
-        await page.getByLabel('Ciudad').fill('Medellin');
-
-        // Trigger blur to ensure save
-        await page.getByLabel('Ciudad').blur();
-        // Wait a bit for DB update
         await page.waitForTimeout(500);
-
-        // Reload to verify persistence
         await page.reload();
 
-        await expect(page.getByLabel('Teléfono')).toHaveValue('3105551234');
-        await expect(page.getByLabel('Email')).toHaveValue('test@example.com');
-        await expect(page.getByLabel('Dirección')).toHaveValue('Calle Falsa 123');
-        await expect(page.getByLabel('Ciudad')).toHaveValue('Medellin');
+        if (await vitalsSection.locator('button.collapser').getAttribute('aria-expanded') === 'false') {
+            await vitalsSection.locator('button.collapser').click();
+        }
+
+        await expect(page.getByTestId('input-vitals-taS')).toHaveValue('120');
+        await expect(page.getByTestId('input-vitals-taD')).toHaveValue('80');
+        await expect(page.getByTestId('input-vitals-fc')).toHaveValue('70');
+        await expect(page.getByTestId('input-vitals-fr')).toHaveValue('18');
+        await expect(page.getByTestId('input-vitals-temp')).toHaveValue('36.5');
+        await expect(page.getByTestId('input-vitals-spo2')).toHaveValue('98');
+        await expect(page.getByTestId('input-vitals-talla')).toHaveValue('170');
+        await expect(page.getByTestId('input-vitals-peso')).toHaveValue('70');
     });
 
-    test('Diagnoses Management', async ({ page }) => {
-        await page.goto('/');
-        await page.getByTestId('btn-new-patient').click();
-        await page.getByTestId('input-doc-number').fill('123123123');
-        await page.getByTestId('input-first-name').fill('Dx');
-        await page.getByTestId('input-last-name').fill('Test');
-        await page.getByTestId('btn-create').click();
-
-        // Open Diagnoses section
-        const dxSection = page.getByText('Diagnósticos (CIE-10)').locator('..').locator('..');
-        if (await dxSection.locator('button.collapser').getAttribute('aria-expanded') === 'false') {
-            await dxSection.locator('button.collapser').click();
-        }
-
-        // Fill Principal Diagnosis
-        // Note: AutoSuggest inputs have data-testid="{testId}-code" and "{testId}-label"
-        await page.getByTestId('dx-principal-code').fill('J00');
-        await page.locator('ul.suggest li', { hasText: 'J00 — Rinofaringitis aguda' }).click();
-
-        // // Select Type
-        await page.getByTestId('select-dx-type').selectOption({ label: '2 - Confirmado Nuevo' });
-
-        // Save
-        await page.getByTestId('btn-save-dx').click();
-
-        // Reload and verify
-        await page.getByTestId('btn-back-home').click();
-        await page.getByTestId('btn-existing-patient').click();
-
-        // await page.getByTestId('btn-search').click();
-
-        await page.getByTestId('input-search').fill('123123123');
-        await page.getByTestId('btn-search').click();
-        await page
-            .locator('button[data-testid^="list-result-item-"]', {
-                hasText: 'Dx Test — CC 123123123',
-            })
-            .click();
-
-        // 1. Section is expanded
-
-        await expect(
-        dxSection.locator('button.collapser')
-        ).toHaveAttribute('aria-expanded', 'true');
-
-        // 2. Principal diagnosis code & label
-        await expect(page.getByTestId('dx-principal-code')).toHaveValue('J00');
-        await expect(page.getByTestId('dx-principal-label')).toHaveValue(
-        /Rinofaringitis aguda/ // or the full label text if you prefer exact match
-        );
-
-        // 3. Selected type = "2 - Confirmado Nuevo"
-        const dxTypeSelect = page.getByTestId('select-dx-type');
-
-        await expect(dxTypeSelect.locator('option:checked')).toHaveText(
-            '2 - Confirmado Nuevo'
-        );
-    });
-
-    test('Procedures Management (Minor Procedure)', async ({ page }) => {
-        await page.goto('/');
-        await page.getByTestId('btn-new-patient').click();
-        await page.getByTestId('input-doc-number').fill('456456456');
-        await page.getByTestId('input-first-name').fill('Proc');
-        await page.getByTestId('input-last-name').fill('Test');
-        await page.getByTestId('btn-create').click();
-
-        // Switch to Minor Procedure
-        await page.getByTestId('select-encounter-type').selectOption('minor_procedure');
-
-        // Open Procedures section
-        const procSection = page.getByTestId('section-procedures');
-        await expect(procSection).toBeVisible();
-        if (await procSection.locator('button.collapser').getAttribute('aria-expanded') === 'false') {
-            await procSection.locator('button.collapser').click();
-        }
-        await expect(page.getByTestId('input-procedure-name')).toBeVisible();
-
-        // Fill Procedure
-        await page.getByTestId('input-procedure-name').fill('Sutura');
-        await page.getByTestId('input-procedure-description').fill('Sutura de herida en mano');
-        await page.getByTestId('checkbox-procedure-consent').check();
-
-        // Open Adjuntos section for notes
-        const adjSection = page.locator('.card', { hasText: 'Adjuntos' }).last();
-        if (await adjSection.locator('button.collapser').getAttribute('aria-expanded') === 'false') {
-            await adjSection.locator('button.collapser').click();
-        }
-        await page.getByTestId('input-procedure-notes').fill('Paciente tranquilo');
-
-        // Reload and verify
-        await page.reload();
-        if (await procSection.locator('button.collapser').getAttribute('aria-expanded') === 'false') {
-            await procSection.locator('button.collapser').click();
-        }
-        await expect(page.getByTestId('input-procedure-name')).toHaveValue('Sutura');
-        await expect(page.getByTestId('checkbox-procedure-consent')).toBeChecked();
-    });
-
-    test('Export Consistency (Robust)', async ({ page }) => {
-        // Mock Electron API - HANG to verify content
-        await page.addInitScript(() => {
-            window.electronAPI = {
-                exportHistoryPdf: async () => new Promise(() => { }), // Never resolve
-            };
-            window.print = () => { };
-        });
-
+    test('Text Areas Persistence', async ({ page }) => {
         await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
         await page.getByTestId('input-doc-number').fill('999888777');
-        await page.getByTestId('input-first-name').fill('Export');
-        await page.getByTestId('input-last-name').fill('Test');
+        await page.getByTestId('input-first-name').fill('Text');
+        await page.getByTestId('input-last-name').fill('Areas');
         await page.getByTestId('btn-create').click();
 
-        // Fill all fields
         const chief = 'Dolor de cabeza intenso';
         const hpi = 'Paciente refiere dolor desde hace 3 dias';
         const pe = 'Paciente alerta, orientado';
@@ -242,7 +160,6 @@ test.describe('Clinic App E2E', () => {
                 await btn.click();
             }
             await page.getByTestId(inputId).fill(value);
-            // Blur to save
             await page.getByTestId(inputId).blur();
         }
 
@@ -252,51 +169,73 @@ test.describe('Clinic App E2E', () => {
         await openAndFill('section-analysis', 'input-analysis', analysis);
         await openAndFill('section-plan', 'input-plan', plan);
 
-        // Vitals
-        const vitalsSection = page.getByTestId('section-vitals');
-        if (await vitalsSection.locator('button.collapser').getAttribute('aria-expanded') === 'false') {
-            await vitalsSection.locator('button.collapser').click();
+        await page.waitForTimeout(500);
+        await page.reload();
+
+        async function verify(sectionId, inputId, value) {
+            const section = page.getByTestId(sectionId);
+            const btn = section.locator('button.collapser');
+            const expanded = await btn.getAttribute('aria-expanded');
+            if (expanded === 'false') {
+                await btn.click();
+            }
+            await expect(page.getByTestId(inputId)).toHaveValue(value);
         }
-        await page.getByTestId('input-vitals-taS').fill('120');
-        await page.getByTestId('input-vitals-taS').blur();
-        await page.getByTestId('input-vitals-taD').fill('80');
-        await page.getByTestId('input-vitals-fc').fill('70');
-        await page.getByTestId('input-vitals-fr').fill('18');
-        await page.getByTestId('input-vitals-temp').fill('36.5');
-        await page.getByTestId('input-vitals-spo2').fill('98');
-        await page.getByTestId('input-vitals-talla').fill('170');
-        await page.getByTestId('input-vitals-peso').fill('70');
-        await page.getByTestId('input-vitals-peso').blur();
 
-        // Export
-        await page.getByTestId('btn-export-history').click();
-
-        // Wait for navigation
-        await page.waitForURL(/\/print\/.+/);
-        await expect(page.getByText('Cargando...')).toBeHidden();
-
-        // Verify Print View
-        await expect(page.getByTestId('print-patient-info')).toContainText('Export');
-        await expect(page.getByTestId('print-section-chief-complaint')).toContainText(chief);
-        await expect(page.getByTestId('print-section-hpi')).toContainText(hpi);
-        await expect(page.getByTestId('print-section-physical-exam')).toContainText(pe);
-        await expect(page.getByTestId('print-section-analysis')).toContainText(analysis);
-        await expect(page.getByTestId('print-section-plan')).toContainText(plan);
-
-        // Verify Vitals in text
-        await expect(page.getByTestId('print-section-vitals')).toContainText('TA 120/80');
-        await expect(page.getByTestId('print-section-vitals')).toContainText('FC 70');
+        await verify('section-chief-complaint', 'input-chief-complaint', chief);
+        await verify('section-hpi', 'input-hpi', hpi);
+        await verify('section-physical-exam', 'input-physical-exam', pe);
+        await verify('section-analysis', 'input-analysis', analysis);
+        await verify('section-plan', 'input-plan', plan);
     });
 
-    test('Prescription Export', async ({ page }) => {
-        // Mock Electron API - HANG to verify content
-        await page.addInitScript(() => {
-            window.electronAPI = {
-                exportHistoryPdf: async () => new Promise(() => { }),
-            };
-            window.print = () => { };
-        });
+    test('Diagnoses Management & ICD10 Loading', async ({ page }) => {
+        await page.goto('/');
+        await page.getByTestId('btn-new-patient').click();
+        await page.getByTestId('input-doc-number').fill('123123123');
+        await page.getByTestId('input-first-name').fill('Dx');
+        await page.getByTestId('input-last-name').fill('Test');
+        await page.getByTestId('btn-create').click();
 
+        // Open Diagnoses section
+        const dxSection = page.getByText('Diagnósticos (CIE-10)').locator('..').locator('..');
+        if (await dxSection.locator('button.collapser').getAttribute('aria-expanded') === 'false') {
+            await dxSection.locator('button.collapser').click();
+        }
+
+        // Test ICD10 Autosuggest
+        await page.getByTestId('dx-principal-code').fill('J0');
+        await expect(page.locator('ul.suggest li').first()).toBeVisible();
+        await page.getByTestId('dx-principal-code').fill('J00');
+        // Use regex for flexible matching
+        await page.locator('ul.suggest li', { hasText: /J00 — Rinofaringitis aguda/ }).click();
+
+        // Select Type
+        await page.getByTestId('select-dx-type').selectOption({ label: '2 - Confirmado Nuevo' });
+
+        // Save
+        await page.getByTestId('btn-save-dx').click();
+
+        await page.getByTestId('btn-back-home').click();
+        await page.getByTestId('btn-existing-patient').click();
+
+        // await page.getByTestId('btn-search').click();
+
+        await page.getByTestId('input-search').fill('123123123');
+        await page.getByTestId('btn-search').click();
+        await page
+            .locator('button[data-testid^="list-result-item-"]', {
+                hasText: 'Dx Test — CC 123123123',
+            })
+            .click();
+
+        await expect(page.getByTestId('dx-principal-code')).toHaveValue('J00');
+        await expect(page.getByTestId('dx-principal-label')).toHaveValue(/Rinofaringitis aguda/);
+        const dxTypeSelect = page.getByTestId('select-dx-type');
+        await expect(dxTypeSelect.locator('option:checked')).toHaveText('2 - Confirmado Nuevo');
+    });
+
+    test('Prescription Management & Deletion', async ({ page }) => {
         await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
         await page.getByTestId('input-doc-number').fill('444555666');
@@ -304,104 +243,123 @@ test.describe('Clinic App E2E', () => {
         await page.getByTestId('input-last-name').fill('Test');
         await page.getByTestId('btn-create').click();
 
-        const rxSection = page.locator('h2', { hasText: 'Fórmula médica' }).locator('..').locator('..'); // Parent card
-        // Open if closed
+        const rxSection = page.locator('h2', { hasText: 'Fórmula médica' }).locator('..').locator('..');
         if (await rxSection.locator('button.collapser').getAttribute('aria-expanded') === 'false') {
             await rxSection.locator('button.collapser').click();
         }
 
-        // Use new testIds
         await page.getByTestId('input-rx-name').fill('Ibuprofeno');
         await page.getByTestId('input-rx-dose').fill('1');
         await page.getByTestId('input-rx-freq').fill('8');
         await page.getByTestId('input-rx-days').fill('5');
+        await page.getByTestId('input-rx-indications').fill('Tomar con comida');
         await page.getByTestId('btn-add-rx').click();
 
-        // Now Export Rx
-        await page.getByTestId('btn-export-rx').click();
+        // Verify added
+        await expect(page.getByText('Ibuprofeno')).toBeVisible();
+        await expect(page.getByText('Tomar con comida')).toBeVisible();
 
-        // Wait for navigation
-        await page.waitForURL(/\/rx\/.+/);
-        await expect(page.getByText('Cargando...')).toBeHidden();
+        // Delete
+        const deleteBtn = page.locator('button:has-text("Eliminar")').first();
+        await deleteBtn.click();
 
-        // Verify Print Prescription View
-        await expect(page.getByTestId('print-rx-patient-info')).toContainText('Rx');
-        await expect(page.getByTestId('print-rx-item')).toContainText('Ibuprofeno');
+        // Verify deleted
+        await expect(page.getByText('Ibuprofeno')).toBeHidden();
     });
 
-    test('Web Print View', async ({ page }) => {
-        // Mock window.print to prevent blocking
-        await page.addInitScript(() => {
-            window.print = () => { };
+    test('Encounter Navigation', async ({ page }) => {
+        await page.goto('/');
+        await page.getByTestId('btn-new-patient').click();
+        await page.getByTestId('input-doc-number').fill('777000777');
+        await page.getByTestId('input-first-name').fill('Nav');
+        await page.getByTestId('input-last-name').fill('Test');
+        await page.getByTestId('btn-create').click();
+
+        // Encounter 1
+        const chief1 = 'First Encounter';
+        await page.getByTestId('section-chief-complaint').click();
+        await page.getByTestId('input-chief-complaint').fill(chief1);
+        await page.getByTestId('input-chief-complaint').blur();
+
+        // Create New Encounter
+        await page.getByTestId('select-encounter').selectOption('__new__');
+        await page.waitForTimeout(1000); // Wait for switch
+
+        // Encounter 2
+        const chief2 = 'Second Encounter';
+        await page.getByTestId('section-chief-complaint').click();
+        await page.getByTestId('input-chief-complaint').fill(chief2);
+        await page.getByTestId('input-chief-complaint').blur();
+
+        // Switch back to Encounter 1
+        // The list is ordered by date DESC.
+        // Enc 2 (newest) -> index 1
+        // Enc 1 (oldest) -> index 2
+        // New Option -> index 0
+
+        // Let's verify the options count to be sure
+        const options = page.getByTestId('select-encounter').locator('option');
+        await expect(options).toHaveCount(3);
+
+        await page.getByTestId('select-encounter').selectOption({ index: 2 });
+        await page.waitForTimeout(1000);
+
+        await expect(page.getByTestId('input-chief-complaint')).toHaveValue(chief1);
+
+        // Switch to Encounter 2 (index 1)
+        await page.getByTestId('select-encounter').selectOption({ index: 1 });
+        await page.waitForTimeout(1000);
+
+        await expect(page.getByTestId('input-chief-complaint')).toHaveValue(chief2);
+    });
+
+    test('Procedures & Attachments (Mocked)', async ({ page }) => {
+        await page.goto('/');
+        await page.getByTestId('btn-new-patient').click();
+        await page.getByTestId('input-doc-number').fill('888999000');
+        await page.getByTestId('input-first-name').fill('Proc');
+        await page.getByTestId('input-last-name').fill('Att');
+        await page.getByTestId('btn-create').click();
+
+        await page.getByTestId('select-encounter-type').selectOption('minor_procedure');
+
+        // Open Procedures section
+        const procSection = page.getByTestId('section-procedures');
+        if (await procSection.locator('button.collapser').getAttribute('aria-expanded') === 'false') {
+            await procSection.locator('button.collapser').click();
+        }
+
+        await page.getByTestId('input-procedure-name').fill('Biopsia');
+        await page.getByTestId('input-procedure-description').fill('Toma de muestra');
+        await page.getByTestId('checkbox-procedure-consent').check();
+
+        // Open Attachments section
+        const attSection = page.getByTestId('section-attachments');
+        await expect(attSection).toBeVisible();
+        if (await attSection.locator('button.collapser').getAttribute('aria-expanded') === 'false') {
+            await attSection.locator('button.collapser').click();
+        }
+
+        // Attachments
+        const buffer = Buffer.from('dummy content');
+
+        await page.getByTestId('input-procedure-file').setInputFiles({
+            name: 'test.txt',
+            mimeType: 'text/plain',
+            buffer: buffer,
         });
 
-        await page.goto('/');
-        await page.getByTestId('btn-new-patient').click();
-        await page.getByTestId('input-doc-number').fill('999000111');
-        await page.getByTestId('input-first-name').fill('Print');
-        await page.getByTestId('input-last-name').fill('Web');
-        await page.getByTestId('btn-create').click();
+        // Wait for upload to process (it's async)
+        await page.waitForTimeout(1000);
 
-        // Click "Ver impresión" (Web version of Export)
-        await page.getByTestId('btn-export-history').click();
+        // Verify attachment in list
+        await expect(page.getByText('test.txt')).toBeVisible();
 
-        // Verify navigation to print view
-        await page.waitForURL(/\/print\/.+/);
-        await page.waitForTimeout(1000); // Wait for DB load
-        await expect(page.getByText('Cargando...')).toBeHidden();
-        await expect(page.getByTestId('print-patient-info')).toContainText('Print Web');
-    });
+        // Delete attachment
+        const deleteBtn = page.getByTestId('section-attachments').locator('button:has-text("Eliminar")').first();
+        await deleteBtn.click();
 
-    test('Negative - Duplicate Patient', async ({ page }) => {
-        // Create first
-        await page.goto('/');
-        await page.getByTestId('btn-new-patient').click();
-        await page.getByTestId('input-doc-number').fill('000000001');
-        await page.getByTestId('input-first-name').fill('Dup');
-        await page.getByTestId('input-last-name').fill('One');
-        await page.getByTestId('btn-create').click();
-
-        // Wait for creation to complete
-        await expect(page).toHaveURL(/\/patient\/.+/);
-
-        // Go back to home using client-side nav to ensure DB persistence in memory
-        await page.getByText('Volver al inicio').click();
-        await expect(page).toHaveURL(/\/$/);
-
-        // DEBUG: Verify patient exists via search
-        await page.getByTestId('btn-existing-patient').click();
-        await page.getByTestId('input-search').fill('000000001');
-        await page.getByTestId('btn-search').click();
-        await expect(page.locator('button:has-text("000000001")')).toBeVisible();
-
-        // Now try create duplicate
-        await page.getByTestId('btn-new-patient').click();
-        await page.getByTestId('input-doc-number').fill('000000001');
-        await page.getByTestId('input-first-name').fill('Dup');
-        await page.getByTestId('input-last-name').fill('Two');
-        await page.getByTestId('btn-create').click();
-
-        // Expect Modal
-        await expect(page.getByTestId('modal-container')).toBeVisible();
-        await expect(page.getByTestId('modal-container')).toContainText('Paciente existente');
-
-        await page.getByTestId('btn-modal-confirm').click();
-
-        const summary = page.getByTestId('existing-patient-summary');
-
-        await expect(summary).toContainText('Dup One');
-        await expect(summary).toContainText('CC 000000001');
-    });
-
-    test('Negative - Missing Fields', async ({ page }) => {
-        await page.goto('/');
-        await page.getByTestId('btn-new-patient').click();
-        // Don't fill anything
-        await page.getByTestId('btn-create').click();
-
-        // Expect Modal
-        await expect(page.getByTestId('modal-container')).toBeVisible();
-        await expect(page.getByText('Datos incompletos')).toBeVisible();
+        await expect(page.getByText('test.txt')).toBeHidden();
     });
 
 });

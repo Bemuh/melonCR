@@ -258,12 +258,12 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
           {attachments.length > 0 && (
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {attachments.map(att => (
-                <li key={att.id} style={{ display: 'flex', alignItems: 'center', marginBottom: 6, background: '#f5f5f5', padding: '4px 8px', borderRadius: 4 }}>
+                <li key={att.id} style={{ display: 'flex', alignItems: 'center', marginBottom: 6, background: '#f5f5f5', padding: '4px 8px', borderRadius: 4 }} data-testid={`list-attachment-item-${att.id}`}>
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{att.file_name}</span>
-                  <button className="small" onClick={() => downloadAttachment(att.id, att.file_name)} style={{ marginRight: 8, backgroundColor: '#007bff', color: 'white', border: 'none' }}>
+                  <button className="small" onClick={() => downloadAttachment(att.id, att.file_name)} style={{ marginRight: 8, backgroundColor: '#007bff', color: 'white', border: 'none' }} data-testid={`btn-download-attachment-${att.id}`}>
                     Descargar
                   </button>
-                  <button className="small danger" onClick={() => delAttachment(att.id)} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none' }}>
+                  <button className="small danger" onClick={() => delAttachment(att.id)} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none' }} data-testid={`btn-delete-attachment-${att.id}`}>
                     Eliminar
                   </button>
                 </li>
