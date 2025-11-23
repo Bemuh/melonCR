@@ -1,4 +1,3 @@
-````markdown
 # melonCR — Historia Clínica offline (PWA + Electron)
 
 Aplicación de historia clínica ambulatoria pensada para consultorios pequeños.  
