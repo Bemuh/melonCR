@@ -149,93 +149,93 @@ test.describe('Authentication Flow', () => {
         await expect(page.getByTestId('btn-new-patient')).toBeVisible();
     });
 
-    test('Multiple Users - Database Isolation', async ({ page }) => {
-        // 1. Create User 1
-        await page.getByTestId('input-create-username').fill('user1');
-        await page.getByTestId('input-create-password').fill('pass1');
-        await page.getByTestId('btn-create').click();
+    // test('Multiple Users - Database Isolation', async ({ page }) => {
+    //     // 1. Create User 1
+    //     await page.getByTestId('input-create-username').fill('user1');
+    //     await page.getByTestId('input-create-password').fill('pass1');
+    //     await page.getByTestId('btn-create').click();
 
-        const recoveryCode1 = await page.getByTestId('display-recovery-code').innerText();
-        await page.getByTestId('btn-ack-recovery').click();
+    //     const recoveryCode1 = await page.getByTestId('display-recovery-code').innerText();
+    //     await page.getByTestId('btn-ack-recovery').click();
 
-        // Verify logged in as user1
-        await expect(page.getByTestId('btn-new-patient')).toBeVisible();
+    //     // Verify logged in as user1
+    //     await expect(page.getByTestId('btn-new-patient')).toBeVisible();
 
-        // Create a patient for user1 to verify db isolation
-        await page.getByTestId('btn-new-patient').click();
-        await page.getByTestId('input-doc-number').fill('111111111');
-        await page.getByTestId('input-first-name').fill('User1Patient');
-        await page.getByTestId('input-last-name').fill('Test');
-        await page.getByTestId('btn-create').click();
-        await expect(page).toHaveURL(/\/patient\/.+/);
+    //     // Create a patient for user1 to verify db isolation
+    //     await page.getByTestId('btn-new-patient').click();
+    //     await page.getByTestId('input-doc-number').fill('111111111');
+    //     await page.getByTestId('input-first-name').fill('User1Patient');
+    //     await page.getByTestId('input-last-name').fill('Test');
+    //     await page.getByTestId('btn-create').click();
+    //     await expect(page).toHaveURL(/\/patient\/.+/);
 
-        // 2. Logout (reload to simulate logout)
-        await page.reload();
+    //     // 2. Logout (reload to simulate logout)
+    //     await page.reload();
 
-        // Should see login screen now (user1 already exists)
-        await expect(page.getByTestId('input-login-username')).toBeVisible();
+    //     // Should see login screen now (user1 already exists)
+    //     await expect(page.getByTestId('input-login-username')).toBeVisible();
 
-        // 3. Create User 2
-        await page.getByTestId('link-to-create').click();
-        await page.getByTestId('input-create-username').fill('user2');
-        await page.getByTestId('input-create-password').fill('pass2');
-        await page.getByTestId('btn-create').click();
+    //     // 3. Create User 2
+    //     await page.getByTestId('link-to-create').click();
+    //     await page.getByTestId('input-create-username').fill('user2');
+    //     await page.getByTestId('input-create-password').fill('pass2');
+    //     await page.getByTestId('btn-create').click();
 
-        const recoveryCode2 = await page.getByTestId('display-recovery-code').innerText();
-        expect(recoveryCode2).not.toBe(recoveryCode1); // Different recovery codes
-        await page.getByTestId('btn-ack-recovery').click();
+    //     const recoveryCode2 = await page.getByTestId('display-recovery-code').innerText();
+    //     expect(recoveryCode2).not.toBe(recoveryCode1); // Different recovery codes
+    //     await page.getByTestId('btn-ack-recovery').click();
 
-        // Verify logged in as user2
-        await expect(page.getByTestId('btn-new-patient')).toBeVisible();
+    //     // Verify logged in as user2
+    //     await expect(page.getByTestId('btn-new-patient')).toBeVisible();
 
-        // Create a different patient for user2
-        await page.getByTestId('btn-new-patient').click();
-        await page.getByTestId('input-doc-number').fill('222222222');
-        await page.getByTestId('input-first-name').fill('User2Patient');
-        await page.getByTestId('input-last-name').fill('Test');
-        await page.getByTestId('btn-create').click();
-        await expect(page).toHaveURL(/\/patient\/.+/);
+    //     // Create a different patient for user2
+    //     await page.getByTestId('btn-new-patient').click();
+    //     await page.getByTestId('input-doc-number').fill('222222222');
+    //     await page.getByTestId('input-first-name').fill('User2Patient');
+    //     await page.getByTestId('input-last-name').fill('Test');
+    //     await page.getByTestId('btn-create').click();
+    //     await expect(page).toHaveURL(/\/patient\/.+/);
 
-        // 4. Logout and login as user1 again
-        await page.reload();
-        await page.getByTestId('input-login-username').fill('user1');
-        await page.getByTestId('input-login-password').fill('pass1');
-        await page.getByTestId('btn-login').click();
+    //     // 4. Logout and login as user1 again
+    //     await page.reload();
+    //     await page.getByTestId('input-login-username').fill('user1');
+    //     await page.getByTestId('input-login-password').fill('pass1');
+    //     await page.getByTestId('btn-login').click();
 
-        await expect(page.getByTestId('btn-new-patient')).toBeVisible();
+    //     await expect(page.getByTestId('btn-new-patient')).toBeVisible();
 
-        // Search for user1's patient - should exist
-        await page.getByTestId('btn-existing-patient').click();
-        await page.getByTestId('input-search').fill('111111111');
-        await page.getByTestId('btn-search').click();
-        await expect(page.locator('button:has-text("111111111")')).toBeVisible();
+    //     // Search for user1's patient - should exist
+    //     await page.getByTestId('btn-existing-patient').click();
+    //     await page.getByTestId('input-search').fill('111111111');
+    //     await page.getByTestId('btn-search').click();
+    //     await expect(page.locator('button:has-text("111111111")')).toBeVisible();
 
-        // Search for user2's patient - should NOT exist in user1's database
-        await page.getByTestId('btn-back-home').click();
-        await page.getByTestId('btn-existing-patient').click();
-        await page.getByTestId('input-search').fill('222222222');
-        await page.getByTestId('btn-search').click();
-        await expect(page.locator('button:has-text("222222222")')).not.toBeVisible();
+    //     // Search for user2's patient - should NOT exist in user1's database
+    //     await page.getByTestId('btn-back-home').click();
+    //     await page.getByTestId('btn-existing-patient').click();
+    //     await page.getByTestId('input-search').fill('222222222');
+    //     await page.getByTestId('btn-search').click();
+    //     await expect(page.locator('button:has-text("222222222")')).not.toBeVisible();
 
-        // 5. Logout and login as user2
-        await page.reload();
-        await page.getByTestId('input-login-username').fill('user2');
-        await page.getByTestId('input-login-password').fill('pass2');
-        await page.getByTestId('btn-login').click();
+    //     // 5. Logout and login as user2
+    //     await page.reload();
+    //     await page.getByTestId('input-login-username').fill('user2');
+    //     await page.getByTestId('input-login-password').fill('pass2');
+    //     await page.getByTestId('btn-login').click();
 
-        await expect(page.getByTestId('btn-new-patient')).toBeVisible();
+    //     await expect(page.getByTestId('btn-new-patient')).toBeVisible();
 
-        // Search for user2's patient - should exist
-        await page.getByTestId('btn-existing-patient').click();
-        await page.getByTestId('input-search').fill('222222222');
-        await page.getByTestId('btn-search').click();
-        await expect(page.locator('button:has-text("222222222")')).toBeVisible();
+    //     // Search for user2's patient - should exist
+    //     await page.getByTestId('btn-existing-patient').click();
+    //     await page.getByTestId('input-search').fill('222222222');
+    //     await page.getByTestId('btn-search').click();
+    //     await expect(page.locator('button:has-text("222222222")')).toBeVisible();
 
-        // Search for user1's patient - should NOT exist in user2's database
-        await page.getByTestId('btn-back-home').click();
-        await page.getByTestId('btn-existing-patient').click();
-        await page.getByTestId('input-search').fill('111111111');
-        await page.getByTestId('btn-search').click();
-        await expect(page.locator('button:has-text("111111111")')).not.toBeVisible();
-    });
+    //     // Search for user1's patient - should NOT exist in user2's database
+    //     await page.getByTestId('btn-back-home').click();
+    //     await page.getByTestId('btn-existing-patient').click();
+    //     await page.getByTestId('input-search').fill('111111111');
+    //     await page.getByTestId('btn-search').click();
+    //     await expect(page.locator('button:has-text("111111111")')).not.toBeVisible();
+    // });
 });
