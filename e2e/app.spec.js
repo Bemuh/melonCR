@@ -3,17 +3,86 @@ import { test, expect } from '@playwright/test';
 test.describe('Clinic App E2E', () => {
 
     test.beforeEach(async ({ page }) => {
-        // Mock window.print to prevent blocking
+        // Mock Electron APIs
         await page.addInitScript(() => {
             window.print = () => { };
             window.electronAPI = {
                 exportHistoryPdf: async () => new Promise(() => { }),
             };
+
+            // Mock DB File API (LocalStorage backed)
+            window.dbFileApi = {
+                loadDbBytes: async (username) => {
+                    const db = localStorage.getItem(`db_${username}`);
+                    return db ? Uint8Array.from(JSON.parse(db)) : null;
+                },
+                saveDbBytes: async (username, data) => {
+                    localStorage.setItem(`db_${username}`, JSON.stringify(Array.from(data)));
+                    return true;
+                },
+            };
+
+            // Mock Auth API (LocalStorage backed)
+            window.authApi = {
+                login: async (username) => {
+                    const users = JSON.parse(localStorage.getItem('mockUsers') || '{}');
+                    return users[username] || null;
+                },
+                create: async (username, userData) => {
+                    const users = JSON.parse(localStorage.getItem('mockUsers') || '{}');
+                    if (users[username]) return { ok: false, error: 'User exists' };
+                    users[username] = userData;
+                    localStorage.setItem('mockUsers', JSON.stringify(users));
+                    return { ok: true };
+                },
+                update: async (username, userData) => {
+                    const users = JSON.parse(localStorage.getItem('mockUsers') || '{}');
+                    if (!users[username]) return { ok: false, error: 'User not found' };
+                    users[username] = { ...users[username], ...userData };
+                    localStorage.setItem('mockUsers', JSON.stringify(users));
+                    return { ok: true };
+                },
+                hasUsers: async () => {
+                    const users = JSON.parse(localStorage.getItem('mockUsers') || '{}');
+                    return Object.keys(users).length > 0;
+                },
+            };
         });
+
+        await page.goto('/');
+
+        // Create and Login a default user for all tests
+        // Wait for auth to initialize
+        await page.waitForTimeout(500);
+
+        // Check if we need to create account or login
+        const createVisible = await page.getByTestId('input-create-username').isVisible().catch(() => false);
+        const loginVisible = await page.getByTestId('input-login-username').isVisible().catch(() => false);
+
+        if (createVisible) {
+            // No users exist, create one
+            await page.getByTestId('input-create-username').fill('testuser');
+            await page.getByTestId('input-create-password').fill('password123');
+            await page.getByTestId('btn-create').click();
+            // Wait for and handle recovery code
+            await page.waitForSelector('[data-testid="display-recovery-code"]', { timeout: 5000 });
+            await page.getByTestId('btn-ack-recovery').click();
+            // Wait for login to complete
+            await page.waitForSelector('[data-testid="btn-new-patient"]', { timeout: 5000 });
+        } else if (loginVisible) {
+            // User exists, just login
+            await page.getByTestId('input-login-username').fill('testuser');
+            await page.getByTestId('input-login-password').fill('password123');
+            await page.getByTestId('btn-login').click();
+            // Wait for login to complete
+            await page.waitForSelector('[data-testid="btn-new-patient"]', { timeout: 5000 });
+        }
+
+        // Ensure we're at the home page
+        await expect(page.getByTestId('btn-new-patient')).toBeVisible();
     });
 
     test('Create New Patient', async ({ page }) => {
-        await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
 
         await page.getByTestId('input-doc-type').selectOption('CC');
@@ -34,7 +103,6 @@ test.describe('Clinic App E2E', () => {
 
     test('Search Existing Patient & Update', async ({ page }) => {
         // Create one first
-        await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
         const docNum = '987654321';
         await page.getByTestId('input-doc-number').fill(docNum);
@@ -43,8 +111,8 @@ test.describe('Clinic App E2E', () => {
         await page.getByTestId('btn-create').click();
         await expect(page).toHaveURL(/\/patient\/.+/);
 
-        // Now search
-        await page.goto('/');
+        // Now search - need to go back home first
+        await page.getByTestId('btn-back-home').click();
         await page.getByTestId('btn-existing-patient').click();
         await page.getByTestId('input-search').fill(docNum);
         await page.getByTestId('btn-search').click();
@@ -68,8 +136,14 @@ test.describe('Clinic App E2E', () => {
         // Wait a bit for DB update
         await page.waitForTimeout(500);
 
-        // Reload to verify persistence
-        await page.reload();
+        // Navigate away and back to verify persistence
+        await page.getByTestId('btn-back-home').click();
+        await page.getByTestId('btn-existing-patient').click();
+        await page.getByTestId('input-search').fill(docNum);
+        await page.getByTestId('btn-search').click();
+        const resultItem2 = page.locator(`button:has-text("${docNum}")`);
+        await expect(resultItem2).toBeVisible();
+        await resultItem2.click();
 
         await expect(page.getByTestId('input-patient-phone')).toHaveValue('3105551234');
         await expect(page.getByTestId('input-patient-email')).toHaveValue('test@example.com');
@@ -78,7 +152,6 @@ test.describe('Clinic App E2E', () => {
     });
 
     test('Change Encounter Type', async ({ page }) => {
-        await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
         await page.getByTestId('input-doc-number').fill('111222333');
         await page.getByTestId('input-first-name').fill('Test');
@@ -98,7 +171,6 @@ test.describe('Clinic App E2E', () => {
     });
 
     test('Vitals Persistence', async ({ page }) => {
-        await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
         await page.getByTestId('input-doc-number').fill('555666777');
         await page.getByTestId('input-first-name').fill('Vitals');
@@ -122,7 +194,12 @@ test.describe('Clinic App E2E', () => {
         await page.getByTestId('input-vitals-peso').blur();
 
         await page.waitForTimeout(500);
-        await page.reload();
+
+        // Navigate away and back to verify persistence
+        const patientUrl = page.url();
+        await page.getByTestId('btn-back-home').click();
+        await page.goto(patientUrl);
+        await page.waitForTimeout(500);
 
         if (await vitalsSection.locator('button.collapser').getAttribute('aria-expanded') === 'false') {
             await vitalsSection.locator('button.collapser').click();
@@ -139,7 +216,6 @@ test.describe('Clinic App E2E', () => {
     });
 
     test('Text Areas Persistence', async ({ page }) => {
-        await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
         await page.getByTestId('input-doc-number').fill('999888777');
         await page.getByTestId('input-first-name').fill('Text');
@@ -170,7 +246,12 @@ test.describe('Clinic App E2E', () => {
         await openAndFill('section-plan', 'input-plan', plan);
 
         await page.waitForTimeout(500);
-        await page.reload();
+
+        // Navigate away and back to verify persistence
+        const patientUrl = page.url();
+        await page.getByTestId('btn-back-home').click();
+        await page.goto(patientUrl);
+        await page.waitForTimeout(500);
 
         async function verify(sectionId, inputId, value) {
             const section = page.getByTestId(sectionId);
@@ -190,7 +271,6 @@ test.describe('Clinic App E2E', () => {
     });
 
     test('Diagnoses Management & ICD10 Loading', async ({ page }) => {
-        await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
         await page.getByTestId('input-doc-number').fill('123123123');
         await page.getByTestId('input-first-name').fill('Dx');
@@ -216,6 +296,7 @@ test.describe('Clinic App E2E', () => {
         // Save
         await page.getByTestId('btn-save-dx').click();
 
+        // Go back home to search for the patient
         await page.getByTestId('btn-back-home').click();
         await page.getByTestId('btn-existing-patient').click();
 
@@ -236,7 +317,6 @@ test.describe('Clinic App E2E', () => {
     });
 
     test('Prescription Management & Deletion', async ({ page }) => {
-        await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
         await page.getByTestId('input-doc-number').fill('444555666');
         await page.getByTestId('input-first-name').fill('Rx');
@@ -268,7 +348,6 @@ test.describe('Clinic App E2E', () => {
     });
 
     test('Encounter Navigation', async ({ page }) => {
-        await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
         await page.getByTestId('input-doc-number').fill('777000777');
         await page.getByTestId('input-first-name').fill('Nav');
@@ -314,7 +393,6 @@ test.describe('Clinic App E2E', () => {
     });
 
     test('Procedures & Attachments (Mocked)', async ({ page }) => {
-        await page.goto('/');
         await page.getByTestId('btn-new-patient').click();
         await page.getByTestId('input-doc-number').fill('888999000');
         await page.getByTestId('input-first-name').fill('Proc');

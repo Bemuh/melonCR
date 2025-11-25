@@ -41,3 +41,6 @@ test-results
 playwright-report
 test_output.txt
 dist
+test_*
+clinic_*.sqljs
+users.json

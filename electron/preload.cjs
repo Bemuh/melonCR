@@ -15,3 +15,27 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("export-history-pdf", options || {});
   },
 });
+
+contextBridge.exposeInMainWorld("dbFileApi", {
+  loadDbBytes(username) {
+    return ipcRenderer.invoke("db-file-load", username);
+  },
+  saveDbBytes(username, data) {
+    return ipcRenderer.invoke("db-file-save", { username, data });
+  },
+});
+
+contextBridge.exposeInMainWorld("authApi", {
+  login(username) {
+    return ipcRenderer.invoke("user-login", username);
+  },
+  create(username, userData) {
+    return ipcRenderer.invoke("user-create", { username, userData });
+  },
+  update(username, userData) {
+    return ipcRenderer.invoke("user-update", { username, userData });
+  },
+  hasUsers() {
+    return ipcRenderer.invoke("user-list-check");
+  },
+});

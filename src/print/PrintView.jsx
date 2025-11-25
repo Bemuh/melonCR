@@ -432,7 +432,7 @@ function Section({ title, text, "data-testid": testId }) {
       <strong>{title}</strong>
       <div
         className="print-text-block-inner"
-        style={{ whiteSpace: "pre-wrap" }}
+        style={{ whiteSpace: "pre-wrap", textAlign: "left" }}
       >
         {text}
       </div>

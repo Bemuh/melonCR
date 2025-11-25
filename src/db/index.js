@@ -10,50 +10,165 @@ let SQL = null;
 let db = null;
 let backupHandle = null;
 
-/** Open (or create) the DB. Loads from IndexedDB, migrates, and warms backup handle if present. */
-export async function openDb() {
+// Session state
+let currentUser = null;
+let currentKey = null; // CryptoKey (AES-GCM)
+
+/** 
+ * Open (or create) the DB. 
+ * If running in Electron with Auth, loads encrypted file.
+ * If running in Browser, uses IndexedDB (no encryption for now, or fallback).
+ */
+export async function openDb(username = null, encryptionKey = null) {
   try {
+    console.log('openDb: starting, username=', username, 'hasKey=', !!encryptionKey);
+
+    // If DB is already initialized and no specific user is provided, don't re-initialize
+    if (db && !username) {
+      console.log('openDb: DB already initialized, skipping re-init');
+      return db;
+    }
+
     if (!SQL) {
-      // Use locally-bundled WASM to avoid CDN/CORS issues
+      console.log('openDb: initializing SQL.js');
       SQL = await initSqlJs({ locateFile: () => wasmUrl });
+      console.log('openDb: SQL.js initialized');
     }
 
-    // Load backup handle if previously chosen (structured-clone-storable in Chromium)
-    try {
-      backupHandle = await get(BACKUP_HANDLE_KEY);
-    } catch {
-      backupHandle = null;
+    currentUser = username;
+    currentKey = encryptionKey;
+
+    let data = null;
+
+    // 1. Try loading from File API (Electron)
+    if (window.dbFileApi && username) {
+      console.log('openDb: trying to load from file API');
+      const encryptedBytes = await window.dbFileApi.loadDbBytes(username);
+      if (encryptedBytes) {
+        console.log('openDb: loaded encrypted data, size=', encryptedBytes.length);
+        // Decrypt
+        data = await decryptData(encryptedBytes, encryptionKey);
+        console.log('openDb: decrypted data, size=', data.length);
+      } else {
+        console.log('openDb: no existing DB file for user');
+      }
+    }
+    // 2. Fallback to IndexedDB (Browser / Dev without Auth)
+    else if (!window.dbFileApi) {
+      console.log('openDb: using IndexedDB fallback');
+      // Load backup handle
+      try {
+        backupHandle = await get(BACKUP_HANDLE_KEY);
+      } catch {
+        backupHandle = null;
+      }
+      data = await get(DB_KEY);
     }
 
-    const saved = await get(DB_KEY);
-    if (saved) {
-      db = new SQL.Database(new Uint8Array(saved));
-      await migrate();     // ensure new columns exist on older DBs
-      await persist();     // persist back (ensures current format)
+    if (data) {
+      console.log('openDb: loading existing database');
+      db = new SQL.Database(new Uint8Array(data));
+      await migrate();
+      // Persist after migration if needed
+      persist().catch(err => console.error('openDb: persist after load failed', err));
     } else {
+      console.log('openDb: creating new database');
       db = new SQL.Database();
-      db.run(schemaDDL);   // create fresh schema (includes new columns)
-      await persist();
+      db.run(schemaDDL);
+      console.log('openDb: schema created, persisting...');
+      // For new DB, persist in background to avoid blocking
+      persist().catch(err => console.error('openDb: initial persist failed', err));
     }
 
+    console.log('openDb: completed successfully');
     return db;
   } catch (err) {
+    console.error("openDb failed", err);
     throw err;
   }
 }
 
-/** Persist DB to IndexedDB (and to an optional fixed backup file). */
+/** Encrypt/Decrypt Helpers */
+async function encryptData(dataUint8, key) {
+  console.log('encryptData: starting, dataSize=', dataUint8.length, 'hasKey=', !!key);
+  if (!key) {
+    console.log('encryptData: no key, returning plain data');
+    return dataUint8;
+  }
+  console.log('encryptData: generating IV');
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  console.log('encryptData: encrypting with AES-GCM');
+  const encrypted = await window.crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    dataUint8
+  );
+  console.log('encryptData: encryption complete, size=', encrypted.byteLength);
+
+  // Combine IV + Encrypted Data
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  console.log('encryptData: combined data, final size=', combined.length);
+  return combined;
+}
+
+async function decryptData(dataUint8, key) {
+  if (!key) return dataUint8;
+  // Extract IV (first 12 bytes)
+  const iv = dataUint8.slice(0, 12);
+  const ciphertext = dataUint8.slice(12);
+
+  const decrypted = await window.crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    ciphertext
+  );
+  return new Uint8Array(decrypted);
+}
+
+/** Persist DB */
 async function persist() {
-  const data = db.export();                       // Uint8Array
-  await set(DB_KEY, data);
-  // Mirror to fixed backup file if user chose one
-  if (backupHandle) {
-    try {
-      await writeBackupFile(data);
-    } catch (e) {
-      // Non-fatal — keep app usable even if backup file failed (e.g., permission revoked)
-      console.warn('Backup file write failed:', e);
+  if (!db) {
+    console.log('persist: no db, returning');
+    return;
+  }
+  try {
+    console.log('persist: starting, currentUser=', currentUser, 'hasKey=', !!currentKey);
+    console.log('persist: exporting database...');
+    const data = db.export(); // Uint8Array
+    console.log('persist: exported data, size=', data.length);
+
+    // 1. Electron File Persistence
+    if (window.dbFileApi && currentUser && currentKey) {
+      console.log('persist: using Electron file API');
+      console.log('persist: calling encryptData...');
+      const encrypted = await encryptData(data, currentKey);
+      console.log('persist: encrypted, size=', encrypted.length);
+      console.log('persist: calling saveDbBytes...');
+      await window.dbFileApi.saveDbBytes(currentUser, encrypted);
+      console.log('persist: saveDbBytes completed successfully');
     }
+    // 2. Browser IndexedDB Persistence
+    else if (!window.dbFileApi) {
+      console.log('persist: using IndexedDB');
+      await set(DB_KEY, data);
+      if (backupHandle) {
+        try {
+          await writeBackupFile(data);
+        } catch (e) {
+          console.warn('Backup file write failed:', e);
+        }
+      }
+      console.log('persist: IndexedDB save complete');
+    } else {
+      console.log('persist: skipping (no currentUser or currentKey)');
+    }
+    console.log('persist: completed');
+  } catch (err) {
+    console.error('persist: FAILED with error', err);
+    console.error('persist: error stack', err.stack);
+    // Don't throw - just log
   }
 }
 
@@ -64,6 +179,7 @@ export async function persistNow() {
 
 /** Read-only SELECT helper. Returns array of row objects. */
 export function exec(sql, params = {}) {
+  if (!db) return [];
   const stmt = db.prepare(sql);
   stmt.bind(params);
   const rows = [];
@@ -74,12 +190,16 @@ export function exec(sql, params = {}) {
 
 /** Run mutation (INSERT/UPDATE/DELETE). Persists afterwards. */
 export function run(sql, params) {
+  if (!db) return;
   const res = db.run(sql, params);
-  return persist();
+  // Persist in background to avoid blocking UI
+  persist().catch(err => console.error('run: persist failed', err));
+  return res;
 }
 
 /** Download a copy of the DB as a file (manual export). */
 export function exportFile() {
+  if (!db) return;
   const data = db.export();
   const blob = new Blob([data], { type: 'application/octet-stream' });
   const a = document.createElement('a');
