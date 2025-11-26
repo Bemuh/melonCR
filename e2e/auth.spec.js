@@ -13,6 +13,13 @@ test.describe('Authentication Flow', () => {
                 exportHistoryPdf: async () => new Promise(() => { }),
             };
 
+            // Mock Config API (auto-configure to skip DbDiscovery)
+            window.configApi = {
+                getDbPath: async () => ({ dbPath: '/mock/path' }),
+                setDbPath: async (path) => ({ ok: true }),
+                selectFolder: async () => '/mock/selected/path'
+            };
+
             // Mock DB File API (LocalStorage backed)
             window.dbFileApi = {
                 loadDbBytes: async (username) => {

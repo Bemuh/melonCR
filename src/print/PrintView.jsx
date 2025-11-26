@@ -16,6 +16,7 @@ export default function PrintView() {
 
   const [patient, setPatient] = useState(null);
   const [encounters, setEncounters] = useState([]);
+  const [doctor, setDoctor] = useState(null);
   const [modal, setModal] = useState({
     open: false,
     title: "",
@@ -55,8 +56,11 @@ export default function PrintView() {
 
       const e = exec(query, params);
 
+      const doc = exec(`SELECT * FROM doctor_profile LIMIT 1`)[0] || null;
+
       setPatient(p);
       setEncounters(e || []);
+      setDoctor(doc);
     });
   }, [patientId, targetEncounterId]);
 
@@ -133,7 +137,7 @@ export default function PrintView() {
     <div className="print-page" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <div style={{ padding: "16px", flex: 1 }}>
         {/* Encabezado compartido médico + logo */}
-        <DoctorHeader marginBottom={12} />
+        <DoctorHeader doctor={doctor} marginBottom={12} />
 
         {/* Título */}
         <h1 style={{ marginTop: 0 }}>Historia Clínica</h1>
@@ -192,7 +196,7 @@ export default function PrintView() {
 
       {/* Footer at the bottom of the page */}
       <div style={{ padding: "16px" }}>
-        <DoctorFooter />
+        <DoctorFooter doctor={doctor} />
       </div>
     </div>
   );

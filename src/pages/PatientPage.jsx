@@ -297,29 +297,29 @@ export default function PatientPage() {
       {/* Encounter header */}
       <div className="card">
         <div className="row">
-          <label>
-            Atención
-            <select
-              value={activeEncounterId || ""}
-              onChange={(e) => {
-                if (e.target.value === "__new__") {
-                  createNewEncounter(patient);
-                } else {
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+            <label style={{ marginBottom: 0 }}>
+              Atención
+              <select
+                value={activeEncounterId || ""}
+                onChange={(e) => {
                   setActiveEncounterId(e.target.value);
                   navigate("?encounterId=" + e.target.value, { replace: true });
-                }
-              }}
-              data-testid="select-encounter"
-            >
-              <option value="__new__">➕ Nueva atención</option>
-              {encounters.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {isoToBogotaInput(e.occurred_at).replace("T", " ")} —{" "}
-                  {e.cas_code} ({getEncounterLabel(e.encounter_type)})
-                </option>
-              ))}
-            </select>
-          </label>
+                }}
+                data-testid="select-encounter"
+              >
+                {encounters.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {isoToBogotaInput(e.occurred_at).replace("T", " ")} —{" "}
+                    {e.cas_code} ({getEncounterLabel(e.encounter_type)})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button onClick={() => createNewEncounter(patient)} data-testid="btn-new-encounter">
+              Nueva
+            </button>
+          </div>
 
           <label>
             Tipo

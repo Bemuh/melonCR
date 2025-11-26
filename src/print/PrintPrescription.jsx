@@ -117,6 +117,7 @@ export default function PrintPrescription() {
   const [encounter, setEncounter] = useState(null);
   const [prescriptions, setPrescriptions] = useState([]);
   const [diagnoses, setDiagnoses] = useState([]);
+  const [doctor, setDoctor] = useState(null);
   const [modal, setModal] = useState({
     open: false,
     title: "",
@@ -158,10 +159,13 @@ export default function PrintPrescription() {
         { $id: encounterId }
       );
 
+      const doc = exec(`SELECT * FROM doctor_profile LIMIT 1`)[0] || null;
+
       setEncounter(enc);
       setPatient(pat || null);
       setPrescriptions(rx || []);
       setDiagnoses(dx || []);
+      setDoctor(doc);
 
       const searchParams = new URLSearchParams(location.search);
       const isPdfExport =
@@ -240,7 +244,7 @@ export default function PrintPrescription() {
         >
           <div style={{ flex: 1 }}>
             {/* Shared doctor header */}
-            <DoctorHeader marginBottom={8} />
+            <DoctorHeader doctor={doctor} marginBottom={8} />
 
             {/* Title + date */}
             <div
@@ -410,7 +414,7 @@ export default function PrintPrescription() {
           </div>
 
           {/* Footer Section */}
-          <DoctorFooter>
+          <DoctorFooter doctor={doctor}>
             <div
               style={{
                 marginTop: "8px",

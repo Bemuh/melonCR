@@ -1,12 +1,9 @@
-import doctor from "../config/doctor.json";
-import logo from "../config/FullColor.png";
-import firma from "../config/firma.PNG";
-
 /**
  * Common doctor header for print views.
  * Renders doctor info on the left and logo on the right.
  */
-export function DoctorHeader({ marginBottom = 12 }) {
+export function DoctorHeader({ doctor, marginBottom = 12 }) {
+  if (!doctor) return null;
   return (
     <div
       style={{
@@ -28,13 +25,14 @@ export function DoctorHeader({ marginBottom = 12 }) {
           </div>
         )}
         {doctor.specialty && <div>{doctor.specialty}</div>}
-        {doctor.professionalId && <div>{doctor.professionalId}</div>}
+        {doctor.medical_license && <div>RM: {doctor.medical_license}</div>}
         {doctor.address && <div>{doctor.address}</div>}
         {doctor.phone && <div>{doctor.phone}</div>}
+        {doctor.email && <div>{doctor.email}</div>}
       </div>
-      {logo && (
+      {doctor.logo_data && (
         <img
-          src={logo}
+          src={doctor.logo_data}
           alt={doctor.name || "Logo"}
           style={{ height: "112px", objectFit: "contain" }}
         />
@@ -64,20 +62,23 @@ export function formatPrintDateTime(d) {
 /**
  * Standard footer with signature and doctor info.
  */
-export function DoctorFooter({ marginBottom = 0, children }) {
+export function DoctorFooter({ doctor, marginBottom = 0, children }) {
+  if (!doctor) return null;
   return (
     <div style={{ marginTop: 'auto', paddingTop: '20px', marginBottom: marginBottom, pageBreakInside: 'avoid' }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <img
-          src={firma}
-          alt="Firma"
-          style={{ height: '80px', objectFit: 'contain', marginBottom: '-10px' }}
-          onError={(e) => e.target.style.display = 'none'}
-        />
+        {doctor.signature_data && (
+          <img
+            src={doctor.signature_data}
+            alt="Firma"
+            style={{ height: '80px', objectFit: 'contain', marginBottom: '-10px' }}
+            onError={(e) => e.target.style.display = 'none'}
+          />
+        )}
         <div style={{ width: '250px', borderBottom: '1px solid #000', marginBottom: '4px' }}></div>
         <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.9rem' }}>{doctor.name}</div>
         <div style={{ fontSize: '0.85rem' }}>{doctor.specialty}</div>
-        <div style={{ fontSize: '0.85rem' }}>{doctor.professionalId}</div>
+        <div style={{ fontSize: '0.85rem' }}>RM: {doctor.medical_license}</div>
       </div>
       {children}
     </div>

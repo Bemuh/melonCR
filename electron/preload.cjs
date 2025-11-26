@@ -39,3 +39,15 @@ contextBridge.exposeInMainWorld("authApi", {
     return ipcRenderer.invoke("user-list-check");
   },
 });
+
+contextBridge.exposeInMainWorld("configApi", {
+  getDbPath() {
+    return ipcRenderer.invoke("db-config-get");
+  },
+  setDbPath(path) {
+    return ipcRenderer.invoke("db-config-set", path);
+  },
+  selectFolder() {
+    return ipcRenderer.invoke("select-folder");
+  },
+});

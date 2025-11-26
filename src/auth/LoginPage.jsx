@@ -40,6 +40,15 @@ export default function LoginPage() {
             const res = await login(username, password);
             if (!res.ok) setError(res.error);
         } else if (mode === 'create') {
+            if (password.length < 8) {
+                setError("La contraseña debe tener al menos 8 caracteres.");
+                return;
+            }
+            if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+                setError("La contraseña debe contener letras y números.");
+                return;
+            }
+
             console.log('LoginPage: calling createAccount');
             const res = await createAccount(username, password);
             console.log('LoginPage: createAccount returned', res);

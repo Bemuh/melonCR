@@ -10,6 +10,13 @@ test.describe('Clinic App E2E', () => {
                 exportHistoryPdf: async () => new Promise(() => { }),
             };
 
+            // Mock Config API (auto-configure to skip DbDiscovery)
+            window.configApi = {
+                getDbPath: async () => ({ dbPath: '/mock/path' }),
+                setDbPath: async (path) => ({ ok: true }),
+                selectFolder: async () => '/mock/selected/path'
+            };
+
             // Mock DB File API (LocalStorage backed)
             window.dbFileApi = {
                 loadDbBytes: async (username) => {
@@ -361,7 +368,7 @@ test.describe('Clinic App E2E', () => {
         await page.getByTestId('input-chief-complaint').blur();
 
         // Create New Encounter
-        await page.getByTestId('select-encounter').selectOption('__new__');
+        await page.getByTestId('btn-new-encounter').click();
         await page.waitForTimeout(1000); // Wait for switch
 
         // Encounter 2
@@ -372,21 +379,20 @@ test.describe('Clinic App E2E', () => {
 
         // Switch back to Encounter 1
         // The list is ordered by date DESC.
-        // Enc 2 (newest) -> index 1
-        // Enc 1 (oldest) -> index 2
-        // New Option -> index 0
+        // Enc 2 (newest) -> index 0
+        // Enc 1 (oldest) -> index 1
 
         // Let's verify the options count to be sure
         const options = page.getByTestId('select-encounter').locator('option');
-        await expect(options).toHaveCount(3);
+        await expect(options).toHaveCount(2);
 
-        await page.getByTestId('select-encounter').selectOption({ index: 2 });
+        await page.getByTestId('select-encounter').selectOption({ index: 1 });
         await page.waitForTimeout(1000);
 
         await expect(page.getByTestId('input-chief-complaint')).toHaveValue(chief1);
 
-        // Switch to Encounter 2 (index 1)
-        await page.getByTestId('select-encounter').selectOption({ index: 1 });
+        // Switch to Encounter 2 (index 0)
+        await page.getByTestId('select-encounter').selectOption({ index: 0 });
         await page.waitForTimeout(1000);
 
         await expect(page.getByTestId('input-chief-complaint')).toHaveValue(chief2);

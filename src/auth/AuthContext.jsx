@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
         if (user) {
             inactivityTimer.current = setTimeout(() => {
                 logout();
-            }, 10 * 60 * 1000); // 10 minutes
+            }, 5 * 60 * 1000); // 5 minutes
         }
     };
 
@@ -209,6 +209,42 @@ export function AuthProvider({ children }) {
         }
     };
 
+    const changePassword = async (oldPassword, newPassword) => {
+        try {
+            if (!user) return { ok: false, error: "No autenticado" };
+            const username = user.username;
+            const userData = await window.authApi.login(username);
+
+            const salt = new Uint8Array(userData.salt);
+            const oldPasswordKey = await deriveKey(oldPassword, salt);
+
+            let masterKey;
+            try {
+                masterKey = await decryptMasterKey(
+                    userData.encryptedMK_password,
+                    userData.iv_password,
+                    oldPasswordKey
+                );
+            } catch (e) {
+                return { ok: false, error: "Contraseña actual incorrecta" };
+            }
+
+            const newPasswordKey = await deriveKey(newPassword, salt);
+            const newMkPassword = await encryptMasterKey(masterKey, newPasswordKey);
+
+            const updatedData = {
+                encryptedMK_password: newMkPassword.encrypted,
+                iv_password: newMkPassword.iv
+            };
+
+            await window.authApi.update(username, updatedData);
+            return { ok: true };
+        } catch (e) {
+            console.error(e);
+            return { ok: false, error: "Error cambiando contraseña" };
+        }
+    };
+
     const logout = () => {
         setUser(null);
         setDbKey(null);
@@ -216,7 +252,7 @@ export function AuthProvider({ children }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, createAccount, recoverPassword, logout, dbKey }}>
+        <AuthContext.Provider value={{ user, login, createAccount, recoverPassword, changePassword, logout, dbKey }}>
             {children}
         </AuthContext.Provider>
     );

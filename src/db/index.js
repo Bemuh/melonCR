@@ -427,6 +427,20 @@ CREATE TABLE IF NOT EXISTS attachments (
   FOREIGN KEY (patient_id) REFERENCES patients(id),
   FOREIGN KEY (encounter_id) REFERENCES encounters(id)
 );
+
+CREATE TABLE IF NOT EXISTS doctor_profile (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  medical_license TEXT,
+  specialty TEXT,
+  phone TEXT,
+  email TEXT,
+  address TEXT,
+  logo_data TEXT, -- Base64
+  signature_data TEXT, -- Base64
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 `;
 
 export default {

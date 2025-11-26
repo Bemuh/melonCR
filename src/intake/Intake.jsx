@@ -149,19 +149,19 @@ export default function Intake() {
           <div className="row" style={{ alignItems: 'flex-end' }}>
             <label style={{ flex: 1, marginTop: 0 }}>
               Buscar por documento/nombre
-              <input
-                value={q}
-                onChange={e => setQ(e.target.value)}
-                placeholder="CC, nombre o apellido"
-                data-testid="input-search"
-              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={q}
+                  onChange={e => setQ(e.target.value)}
+                  placeholder="CC, nombre o apellido"
+                  data-testid="input-search"
+                  style={{ flex: 1 }}
+                />
+                <button onClick={search} data-testid="btn-search">
+                  Buscar
+                </button>
+              </div>
             </label>
-
-            <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>
-              <button onClick={search} style={{ alignSelf: 'center' }} data-testid="btn-search">
-                Buscar
-              </button>
-            </div>
           </div>
 
           <ul>
@@ -251,17 +251,17 @@ export default function Intake() {
             </label>
 
             <label>
+              Ciudad
+              <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} data-testid="input-city" />
+            </label>
+
+            <label>
               Dirección
               <input
                 value={form.address}
                 onChange={e => setForm({ ...form, address: e.target.value })}
                 data-testid="input-address"
               />
-            </label>
-
-            <label>
-              Ciudad
-              <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} data-testid="input-city" />
             </label>
           </div>
 

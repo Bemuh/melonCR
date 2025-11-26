@@ -156,7 +156,7 @@ export default function Prescriptions({ encounter, onCountChange }) {
   return (
     <div>
       <div className="row">
-        <label>
+        <label style={{ flex: 2 }}>
           Nombre
           <input
             value={rx.name}
@@ -167,7 +167,9 @@ export default function Prescriptions({ encounter, onCountChange }) {
             data-testid="input-rx-name"
           />
         </label>
+      </div>
 
+      <div className="row">
         <label>
           Cantidad por toma
           <input
@@ -178,7 +180,7 @@ export default function Prescriptions({ encounter, onCountChange }) {
                 dose_per_take: e.target.value,
               }))
             }
-            placeholder="Ej: 1 (tableta, sobre, ml...)"
+            placeholder="Ej: 1"
             data-testid="input-rx-dose"
           />
         </label>
@@ -218,7 +220,8 @@ export default function Prescriptions({ encounter, onCountChange }) {
           <input
             value={previewTotal || ''}
             readOnly
-            placeholder="Se calcula automáticamente"
+            placeholder="Calculado"
+            style={{ backgroundColor: '#f0f0f0' }}
           />
         </label>
       </div>

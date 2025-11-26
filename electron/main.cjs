@@ -17,19 +17,46 @@ const BASE_PATH = isDev
   ? process.cwd()
   : path.dirname(process.execPath);
 
-const USERS_FILE = path.join(BASE_PATH, "users.json");
+const CONFIG_FILE = path.join(app.getPath("userData"), "config.json");
+let dbBasePath = null;
+
+function loadConfig() {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const data = fs.readFileSync(CONFIG_FILE, "utf8");
+      const config = JSON.parse(data);
+      if (config.dbPath) {
+        dbBasePath = config.dbPath;
+        console.log("Loaded DB path:", dbBasePath);
+      }
+    }
+  } catch (e) {
+    console.error("Error loading config:", e);
+  }
+}
+
+// Load config immediately
+loadConfig();
+
+function getUsersPath() {
+  // If no path configured, we can't really read users, or we fallback to a default?
+  // For now, if dbBasePath is set, use it. Else fallback to BASE_PATH (dev mode or default).
+  return dbBasePath ? path.join(dbBasePath, "users.json") : path.join(BASE_PATH, "users.json");
+}
 
 function getDbPath(username) {
   // Sanitize username to be safe for filenames
   const safeName = username.replace(/[^a-z0-9_\-]/gi, "_");
-  return path.join(BASE_PATH, `clinic_${safeName}.sqljs`);
+  const base = dbBasePath || BASE_PATH;
+  return path.join(base, `clinic_${safeName}.sqljs`);
 }
 
 // --- User Management Helpers ---
 async function readUsers() {
   try {
-    if (!fs.existsSync(USERS_FILE)) return {};
-    const data = await fs.promises.readFile(USERS_FILE, "utf8");
+    const usersPath = getUsersPath();
+    if (!fs.existsSync(usersPath)) return {};
+    const data = await fs.promises.readFile(usersPath, "utf8");
     return JSON.parse(data);
   } catch (e) {
     console.error("Error reading users.json:", e);
@@ -38,13 +65,15 @@ async function readUsers() {
 }
 
 async function writeUsers(users) {
-  await fs.promises.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
+  const usersPath = getUsersPath();
+  await fs.promises.writeFile(usersPath, JSON.stringify(users, null, 2));
 }
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    title: "Melon Clinic Records",
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -151,6 +180,38 @@ function registerIpcHandlers() {
   ipcMain.handle("user-list-check", async () => {
     const users = await readUsers();
     return Object.keys(users).length > 0;
+  });
+
+  // --- Config & Setup ---
+  ipcMain.handle("db-config-get", () => {
+    return { dbPath: dbBasePath };
+  });
+
+  ipcMain.handle("db-config-set", async (event, newPath) => {
+    try {
+      // Validate path exists?
+      if (!fs.existsSync(newPath)) {
+        return { ok: false, error: "Path does not exist" };
+      }
+      dbBasePath = newPath;
+      await fs.promises.writeFile(CONFIG_FILE, JSON.stringify({ dbPath: newPath }, null, 2));
+      return { ok: true };
+    } catch (e) {
+      console.error("Error saving config:", e);
+      return { ok: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle("select-folder", async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      properties: ["openDirectory"],
+      title: "Seleccionar carpeta de datos",
+    });
+    if (canceled || filePaths.length === 0) {
+      return null;
+    }
+    return filePaths[0];
   });
 }
 
