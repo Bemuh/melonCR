@@ -134,7 +134,7 @@ export default function Intake() {
 
   return (
     <div className="card">
-      <h1>Ingreso</h1>
+      <h1 className='center'>Ingreso</h1>
       <div className="row">
         <button className={mode === 'new' ? '' : 'ghost'} onClick={() => setMode('new')} data-testid="btn-new-patient">
           Paciente nuevo
