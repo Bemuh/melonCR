@@ -1,8 +1,8 @@
 {
-  "name": "web-clinic-pwa-sqljs",
+  "name": "MelonClinicRecords",
   "version": "0.1.0",
   "description": "Clinic desktop app (Vite + React + sql.js) packaged with Electron",
-  "author": "Your Name",
+  "author": "Daniel Avila",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",

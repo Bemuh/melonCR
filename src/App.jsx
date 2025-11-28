@@ -3,7 +3,10 @@ import Intake from './intake/Intake.jsx'
 import DoctorProfileForm from './components/Auth/DoctorProfileForm.jsx'
 import db from './db/index.js'
 
+import { useAuth } from './auth/AuthContext.jsx';
+
 export default function App() {
+  const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -24,8 +27,12 @@ export default function App() {
   };
 
   useEffect(() => {
-    checkProfile();
-  }, []);
+    if (user) {
+      checkProfile();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
 
   if (loading) return <div className="container" style={{ padding: '20px' }}>Cargando...</div>;
 

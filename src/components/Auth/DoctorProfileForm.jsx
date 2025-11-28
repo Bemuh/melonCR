@@ -72,7 +72,7 @@ export default function DoctorProfileForm({ onSaved, initialData = null }) {
                 <h2 style={{ marginBottom: '20px', color: 'var(--primary)' }}>
                     {initialData ? 'Editar Perfil' : 'Completar Perfil del Médico'}
                 </h2>
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }} data-testid="form-doctor-profile">
                     <label>
                         Nombre Completo *
                         <input
@@ -81,6 +81,7 @@ export default function DoctorProfileForm({ onSaved, initialData = null }) {
                             onChange={handleChange}
                             required
                             placeholder="Dr. Juan Pérez"
+                            data-testid="input-medical-name"
                         />
                     </label>
 
@@ -92,6 +93,7 @@ export default function DoctorProfileForm({ onSaved, initialData = null }) {
                                 value={formData.specialty}
                                 onChange={handleChange}
                                 placeholder="Cardiología"
+                                data-testid="input-specialty"
                             />
                         </label>
                         <label>
@@ -101,6 +103,7 @@ export default function DoctorProfileForm({ onSaved, initialData = null }) {
                                 value={formData.medical_license}
                                 onChange={handleChange}
                                 placeholder="RM-12345"
+                                data-testid="input-medical-license"
                             />
                         </label>
                     </div>
@@ -159,7 +162,7 @@ export default function DoctorProfileForm({ onSaved, initialData = null }) {
                         </label>
                     </div>
 
-                    <button type="submit" style={{ marginTop: '10px' }}>
+                    <button type="submit" style={{ marginTop: '10px' }} data-testid="btn-save-profile">
                         Guardar Perfil
                     </button>
                 </form>

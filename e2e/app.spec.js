@@ -21,7 +21,16 @@ test.describe('Clinic App E2E', () => {
             window.dbFileApi = {
                 loadDbBytes: async (username) => {
                     const db = localStorage.getItem(`db_${username}`);
-                    return db ? Uint8Array.from(JSON.parse(db)) : null;
+                    if (db) return Uint8Array.from(JSON.parse(db));
+
+                    // If no DB, return one with doctor profile for testing PDF
+                    // We need to create a new SQL.js DB here, but we can't easily do that in the browser context without loading SQL.js
+                    // So we rely on the app creating it.
+                    // However, for the PDF test, we need the profile to exist.
+                    // The app creates tables on open.
+                    // We can inject the profile via SQL execution if we had access to the DB instance.
+                    // Alternatively, we can rely on the test creating the profile via UI first.
+                    return null;
                 },
                 saveDbBytes: async (username, data) => {
                     localStorage.setItem(`db_${username}`, JSON.stringify(Array.from(data)));
@@ -69,18 +78,41 @@ test.describe('Clinic App E2E', () => {
         if (createVisible) {
             // No users exist, create one
             await page.getByTestId('input-create-username').fill('testuser');
-            await page.getByTestId('input-create-password').fill('password123');
+            await page.getByTestId('input-create-password').fill('TestPass123');
             await page.getByTestId('btn-create').click();
             // Wait for and handle recovery code
             await page.waitForSelector('[data-testid="display-recovery-code"]', { timeout: 5000 });
             await page.getByTestId('btn-ack-recovery').click();
+
+            // Handle Doctor Profile if it appears
+            try {
+                await page.waitForSelector('[data-testid="form-doctor-profile"]', { timeout: 2000 });
+                await page.getByTestId('input-medical-name').fill('Dr. Test');
+                await page.getByTestId('input-medical-license').fill('RM123');
+                await page.getByTestId('btn-save-profile').click();
+            } catch (e) {
+                // Profile might not appear if already completed (though this is create flow)
+                // or if logic skips it.
+            }
+
             // Wait for login to complete
             await page.waitForSelector('[data-testid="btn-new-patient"]', { timeout: 5000 });
         } else if (loginVisible) {
             // User exists, just login
             await page.getByTestId('input-login-username').fill('testuser');
-            await page.getByTestId('input-login-password').fill('password123');
+            await page.getByTestId('input-login-password').fill('TestPass123');
             await page.getByTestId('btn-login').click();
+
+            // Handle Doctor Profile if it appears (e.g. if previous test failed before completing it)
+            try {
+                await page.waitForSelector('[data-testid="form-doctor-profile"]', { timeout: 2000 });
+                await page.getByTestId('input-medical-name').fill('Dr. Test');
+                await page.getByTestId('input-medical-license').fill('RM123');
+                await page.getByTestId('btn-save-profile').click();
+            } catch (e) {
+                // Ignore
+            }
+
             // Wait for login to complete
             await page.waitForSelector('[data-testid="btn-new-patient"]', { timeout: 5000 });
         }

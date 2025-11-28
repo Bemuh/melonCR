@@ -308,6 +308,12 @@ async function migrate() {
       FOREIGN KEY (procedure_id) REFERENCES procedures(id) ON DELETE CASCADE
     )
   `);
+
+  // Create settings table if missing
+  const tables = exec(`SELECT name FROM sqlite_master WHERE type='table' AND name='settings'`);
+  if (tables.length === 0) {
+    db.run(`CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)`);
+  }
 }
 
 /* ---------- initial schema (used for fresh DBs) ---------- */
@@ -440,6 +446,11 @@ CREATE TABLE IF NOT EXISTS doctor_profile (
   signature_data TEXT, -- Base64
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
 );
 `;
 

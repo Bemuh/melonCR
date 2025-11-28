@@ -35,6 +35,7 @@ export function DoctorHeader({ doctor, marginBottom = 12 }) {
           src={doctor.logo_data}
           alt={doctor.name || "Logo"}
           style={{ height: "112px", objectFit: "contain" }}
+          data-testid="pdf-logo"
         />
       )}
     </div>
@@ -73,6 +74,7 @@ export function DoctorFooter({ doctor, marginBottom = 0, children }) {
             alt="Firma"
             style={{ height: '80px', objectFit: 'contain', marginBottom: '-10px' }}
             onError={(e) => e.target.style.display = 'none'}
+            data-testid="pdf-signature"
           />
         )}
         <div style={{ width: '250px', borderBottom: '1px solid #000', marginBottom: '4px' }}></div>

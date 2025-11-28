@@ -66,7 +66,7 @@ export default function PrintView() {
 
   // Disparar impresión o exportación a PDF cuando ya hay datos
   useEffect(() => {
-    if (!patient || encounters.length === 0) return;
+    if (!patient || encounters.length === 0 || !doctor) return;
 
     // Desktop: exportar PDF con Electron
     if (isPdfExport && isElectron && window.electronAPI?.exportHistoryPdf) {
@@ -110,7 +110,7 @@ export default function PrintView() {
     // Navegador: diálogo de impresión del sistema
     const handle = setTimeout(() => window.print(), 400);
     return () => clearTimeout(handle);
-  }, [patient, encounters, isPdfExport, navigate]);
+  }, [patient, encounters, doctor, isPdfExport, navigate]);
 
   // Volver atrás después de imprimir (sólo cuando NO es modo PDF interno)
   useEffect(() => {

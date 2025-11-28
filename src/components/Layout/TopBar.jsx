@@ -17,7 +17,7 @@ export default function TopBar() {
             boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
             marginBottom: '20px'
         }}>
-            <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#2563eb' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }} data-testid="brand-logo">
                 <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>Melon Clinic</Link>
             </div>
             <nav style={{ display: 'flex', gap: '20px' }}>

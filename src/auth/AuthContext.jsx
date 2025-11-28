@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { openDb } from '../db/index.js';
+import { openDb, exec, run } from '../db/index.js';
 
 const AuthContext = createContext(null);
 
@@ -7,15 +7,16 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [dbKey, setDbKey] = useState(null); // The decrypted Master Key
+    const [inactivityTimeout, setInactivityTimeout] = useState(10); // Default 10 mins
     const inactivityTimer = useRef(null);
 
     // --- Inactivity Logic ---
     const resetTimer = () => {
         if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
-        if (user) {
+        if (user && inactivityTimeout > 0) {
             inactivityTimer.current = setTimeout(() => {
                 logout();
-            }, 5 * 60 * 1000); // 5 minutes
+            }, inactivityTimeout * 60 * 1000);
         }
     };
 
@@ -27,7 +28,7 @@ export function AuthProvider({ children }) {
             events.forEach(e => window.removeEventListener(e, handler));
             if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
         };
-    }, [user]);
+    }, [user, inactivityTimeout]);
 
     // --- Crypto Helpers ---
     async function deriveKey(password, salt) {
@@ -106,6 +107,17 @@ export function AuthProvider({ children }) {
                 console.log('AuthContext: login successful, opening DB...');
                 await openDb(username, masterKey);
                 console.log('AuthContext: DB opened');
+
+                // Load settings
+                try {
+                    const rows = exec("SELECT value FROM settings WHERE key='inactivity_timeout'");
+                    if (rows.length > 0) {
+                        setInactivityTimeout(parseInt(rows[0].value, 10));
+                    }
+                } catch (e) {
+                    console.warn("Failed to load settings:", e);
+                }
+
                 resetTimer();
                 return { ok: true };
             } catch (e) {
@@ -245,6 +257,15 @@ export function AuthProvider({ children }) {
         }
     };
 
+    const updateInactivityTimeout = (minutes) => {
+        try {
+            run("INSERT OR REPLACE INTO settings (key, value) VALUES ('inactivity_timeout', $val)", { $val: String(minutes) });
+            setInactivityTimeout(minutes);
+        } catch (e) {
+            console.error("Error saving setting:", e);
+        }
+    };
+
     const logout = () => {
         setUser(null);
         setDbKey(null);
@@ -252,7 +273,7 @@ export function AuthProvider({ children }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, createAccount, recoverPassword, changePassword, logout, dbKey }}>
+        <AuthContext.Provider value={{ user, login, createAccount, recoverPassword, changePassword, logout, dbKey, inactivityTimeout, updateInactivityTimeout }}>
             {children}
         </AuthContext.Provider>
     );

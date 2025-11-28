@@ -4,7 +4,7 @@ import { useAuth } from '../../auth/AuthContext.jsx';
 import db from '../../db/index.js';
 
 export default function ConfigPanel() {
-    const { changePassword } = useAuth();
+    const { changePassword, inactivityTimeout, updateInactivityTimeout } = useAuth();
     const [activeTab, setActiveTab] = useState('profile');
     const [profileData, setProfileData] = useState(null);
 
@@ -12,9 +12,16 @@ export default function ConfigPanel() {
     const [pwdData, setPwdData] = useState({ current: '', new: '', confirm: '' });
     const [pwdMsg, setPwdMsg] = useState({ type: '', text: '' });
 
+    // Timer state
+    const [timerVal, setTimerVal] = useState(10);
+
     useEffect(() => {
         loadProfile();
     }, []);
+
+    useEffect(() => {
+        if (inactivityTimeout) setTimerVal(inactivityTimeout);
+    }, [inactivityTimeout]);
 
     const loadProfile = () => {
         try {
@@ -45,20 +52,46 @@ export default function ConfigPanel() {
         }
     };
 
+    const handleTimerSave = () => {
+        let val = parseInt(timerVal, 10);
+        if (isNaN(val)) val = 10;
+        if (val < 5) val = 5;
+        if (val > 60) val = 60;
+        updateInactivityTimeout(val);
+        setTimerVal(val);
+        alert('Configuración guardada');
+    };
+
     return (
-        <div className="container" style={{ padding: '20px' }}>
+        <div className="container" data-testid="config-page">
             <h1 style={{ marginBottom: '20px' }}>Configuración</h1>
-            <div className="tabs" style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+            <div className="tabs" style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #e5e7eb' }}>
                 <button
                     className={activeTab === 'profile' ? 'active' : ''}
                     onClick={() => setActiveTab('profile')}
+                    data-testid="config-profile-tab"
                     style={{
                         padding: '10px 20px',
                         border: 'none',
-                        borderBottom: activeTab === 'profile' ? '2px solid var(--primary)' : '2px solid transparent',
-                        background: 'none',
+                        borderBottom: activeTab === 'profile' ? '3px solid var(--primary)' : '3px solid transparent',
+                        background: activeTab === 'profile' ? 'var(--primary-light)' : 'transparent',
                         cursor: 'pointer',
-                        fontWeight: activeTab === 'profile' ? 'bold' : 'normal'
+                        fontWeight: activeTab === 'profile' ? 'bold' : 'normal',
+                        color: activeTab === 'profile' ? 'var(--primary)' : '#6b7280',
+                        transition: 'all 0.2s',
+                        borderRadius: '4px 4px 0 0'
+                    }}
+                    onMouseEnter={(e) => {
+                        if (activeTab !== 'profile') {
+                            e.target.style.background = '#f3f4f6';
+                            e.target.style.color = '#374151';
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        if (activeTab !== 'profile') {
+                            e.target.style.background = 'transparent';
+                            e.target.style.color = '#6b7280';
+                        }
                     }}
                 >
                     Perfil
@@ -66,13 +99,29 @@ export default function ConfigPanel() {
                 <button
                     className={activeTab === 'security' ? 'active' : ''}
                     onClick={() => setActiveTab('security')}
+                    data-testid="config-security-tab"
                     style={{
                         padding: '10px 20px',
                         border: 'none',
-                        borderBottom: activeTab === 'security' ? '2px solid var(--primary)' : '2px solid transparent',
-                        background: 'none',
+                        borderBottom: activeTab === 'security' ? '3px solid var(--primary)' : '3px solid transparent',
+                        background: activeTab === 'security' ? 'var(--primary-light)' : 'transparent',
                         cursor: 'pointer',
-                        fontWeight: activeTab === 'security' ? 'bold' : 'normal'
+                        fontWeight: activeTab === 'security' ? 'bold' : 'normal',
+                        color: activeTab === 'security' ? 'var(--primary)' : '#6b7280',
+                        transition: 'all 0.2s',
+                        borderRadius: '4px 4px 0 0'
+                    }}
+                    onMouseEnter={(e) => {
+                        if (activeTab !== 'security') {
+                            e.target.style.background = '#f3f4f6';
+                            e.target.style.color = '#374151';
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        if (activeTab !== 'security') {
+                            e.target.style.background = 'transparent';
+                            e.target.style.color = '#6b7280';
+                        }
                     }}
                 >
                     Seguridad
@@ -85,7 +134,7 @@ export default function ConfigPanel() {
                 )}
 
                 {activeTab === 'security' && (
-                    <div className="card" style={{ maxWidth: '500px' }}>
+                    <div className="card" style={{ maxWidth: '600px' }}>
                         <h2>Cambiar Contraseña</h2>
                         {pwdMsg.text && (
                             <div style={{
@@ -106,6 +155,7 @@ export default function ConfigPanel() {
                                     value={pwdData.current}
                                     onChange={e => setPwdData({ ...pwdData, current: e.target.value })}
                                     required
+                                    data-testid="input-current-password"
                                 />
                             </label>
                             <label>
@@ -115,6 +165,7 @@ export default function ConfigPanel() {
                                     value={pwdData.new}
                                     onChange={e => setPwdData({ ...pwdData, new: e.target.value })}
                                     required
+                                    data-testid="input-new-password"
                                 />
                             </label>
                             <label>
@@ -124,14 +175,33 @@ export default function ConfigPanel() {
                                     value={pwdData.confirm}
                                     onChange={e => setPwdData({ ...pwdData, confirm: e.target.value })}
                                     required
+                                    data-testid="input-confirm-password"
                                 />
                             </label>
-                            <button type="submit">Actualizar Contraseña</button>
+                            <button type="submit" data-testid="btn-change-password">Actualizar Contraseña</button>
                         </form>
 
                         <hr style={{ margin: '20px 0' }} />
                         <h3>Sesión</h3>
-                        <p style={{ color: '#666' }}>El cierre de sesión automático está activado (5 minutos de inactividad).</p>
+                        <div style={{ marginBottom: '15px' }}>
+                            <label htmlFor="inactivity-timer">Tiempo de inactividad (minutos)</label>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <input
+                                    id="inactivity-timer"
+                                    type="number"
+                                    min="5"
+                                    max="60"
+                                    value={timerVal}
+                                    onChange={(e) => setTimerVal(e.target.value)}
+                                    data-testid="config-inactivity-timeout"
+                                    style={{ width: '100px' }}
+                                />
+                                <button onClick={handleTimerSave} data-testid="config-save-timer">Guardar</button>
+                            </div>
+                            <p className="small" style={{ marginTop: '5px' }}>
+                                El sistema cerrará la sesión automáticamente después de este tiempo de inactividad (5-60 min).
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>
