@@ -63,78 +63,35 @@ export default function ConfigPanel() {
     };
 
     return (
-        <div className="container" data-testid="config-page">
-            <h1 style={{ marginBottom: '20px' }}>Configuración</h1>
-            <div className="tabs" style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #e5e7eb' }}>
+        <div className="card config-card" data-testid="config-page">
+            {/* <h1 style={{ marginBottom: '20px' }}>Configuración</h1> */}
+            <div className="tabs">
                 <button
-                    className={activeTab === 'profile' ? 'active' : ''}
+                    className={`tab ${activeTab === 'profile' ? 'tab--active' : ''}`}
                     onClick={() => setActiveTab('profile')}
                     data-testid="config-profile-tab"
-                    style={{
-                        padding: '10px 20px',
-                        border: 'none',
-                        borderBottom: activeTab === 'profile' ? '3px solid var(--primary)' : '3px solid transparent',
-                        background: activeTab === 'profile' ? 'var(--primary-light)' : 'transparent',
-                        cursor: 'pointer',
-                        fontWeight: activeTab === 'profile' ? 'bold' : 'normal',
-                        color: activeTab === 'profile' ? 'var(--primary)' : '#6b7280',
-                        transition: 'all 0.2s',
-                        borderRadius: '4px 4px 0 0'
-                    }}
-                    onMouseEnter={(e) => {
-                        if (activeTab !== 'profile') {
-                            e.target.style.background = '#f3f4f6';
-                            e.target.style.color = '#374151';
-                        }
-                    }}
-                    onMouseLeave={(e) => {
-                        if (activeTab !== 'profile') {
-                            e.target.style.background = 'transparent';
-                            e.target.style.color = '#6b7280';
-                        }
-                    }}
                 >
                     Perfil
                 </button>
+
                 <button
-                    className={activeTab === 'security' ? 'active' : ''}
+                    className={`tab ${activeTab === 'security' ? 'tab--active' : ''}`}
                     onClick={() => setActiveTab('security')}
                     data-testid="config-security-tab"
-                    style={{
-                        padding: '10px 20px',
-                        border: 'none',
-                        borderBottom: activeTab === 'security' ? '3px solid var(--primary)' : '3px solid transparent',
-                        background: activeTab === 'security' ? 'var(--primary-light)' : 'transparent',
-                        cursor: 'pointer',
-                        fontWeight: activeTab === 'security' ? 'bold' : 'normal',
-                        color: activeTab === 'security' ? 'var(--primary)' : '#6b7280',
-                        transition: 'all 0.2s',
-                        borderRadius: '4px 4px 0 0'
-                    }}
-                    onMouseEnter={(e) => {
-                        if (activeTab !== 'security') {
-                            e.target.style.background = '#f3f4f6';
-                            e.target.style.color = '#374151';
-                        }
-                    }}
-                    onMouseLeave={(e) => {
-                        if (activeTab !== 'security') {
-                            e.target.style.background = 'transparent';
-                            e.target.style.color = '#6b7280';
-                        }
-                    }}
                 >
                     Seguridad
                 </button>
             </div>
 
-            <div className="tab-content">
+            <div>
                 {activeTab === 'profile' && (
-                    <DoctorProfileForm initialData={profileData} onSaved={loadProfile} />
+                    <div className="config-card" style={{ maxWidth: '600px' }}>
+                        <DoctorProfileForm initialData={profileData} onSaved={loadProfile} />
+                    </div>
                 )}
 
                 {activeTab === 'security' && (
-                    <div className="card" style={{ maxWidth: '600px' }}>
+                    <div className="config-card" style={{ maxWidth: '600px' }}>
                         <h2>Cambiar Contraseña</h2>
                         {pwdMsg.text && (
                             <div style={{

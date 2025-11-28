@@ -179,7 +179,7 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
         <>
           {/* Removed "Nuevo Procedimiento" title as requested */}
 
-          <div className="diag-grid">
+          <div className="row">
             <div className="input-wrap" style={{ width: '100%' }}>
               <input
                 placeholder="Nombre del procedimiento"
@@ -205,7 +205,7 @@ export default function Procedures({ encounter, onCountChange, mode = 'all' }) {
           </div>
 
           <div className="row" style={{ marginTop: 8 }}>
-            <label className="inline-center no-grow">
+            <label className="inline-center no-grow checkbox-consent">
               <input
                 type="checkbox"
                 checked={pr.consent_obtained}

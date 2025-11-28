@@ -48,6 +48,10 @@ body {
   margin: 0 auto;
   padding: var(--spacing-lg);
 }
+.config-card {
+  max-width: 800px;      /* pick a width similar to Ingreso card */
+  margin: 20px auto;     /* center horizontally like Ingreso */
+}
 
 .card {
   background: var(--bg-card);
@@ -196,6 +200,8 @@ button.small {
   margin-bottom: var(--spacing-md);
   border-bottom: 1px solid var(--border);
   padding-bottom: var(--spacing-xs);
+  justify-content: center;  /* centers buttons horizontally */
+  gap: 8px;        
 }
 
 .tab {
@@ -375,6 +381,12 @@ hr {
   position: relative;
 }
 
+.checkbox-consent {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px; /* optional spacing between checkbox and text */
+}
 .suggest {
   position: absolute;
   top: 100%;
