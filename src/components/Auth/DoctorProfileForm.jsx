@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import db from '../../db/index.js';
+import db, { persistNow } from '../../db/index.js';
 
 export default function DoctorProfileForm({ onSaved, initialData = null }) {
     const [formData, setFormData] = useState({
@@ -58,6 +58,9 @@ export default function DoctorProfileForm({ onSaved, initialData = null }) {
                 initialData?.created_at || now,
                 now
             ]);
+
+            // Force persist to disk so restart picks it up
+            await persistNow();
 
             if (onSaved) onSaved();
         } catch (err) {

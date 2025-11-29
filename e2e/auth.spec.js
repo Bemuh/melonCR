@@ -270,6 +270,7 @@ test.describe('Authentication Flow', () => {
         // 3. Set timer to 5 mins
         await page.getByTestId('config-inactivity-timeout').fill('5');
         await page.getByTestId('config-save-timer').click();
+        await page.getByTestId('btn-modal-confirm').click();
 
         // 4. Fast forward time
         // We need to use page.clock.fastForward, but first we need to install it?

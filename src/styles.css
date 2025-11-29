@@ -48,9 +48,12 @@ body {
   margin: 0 auto;
   padding: var(--spacing-lg);
 }
+
 .config-card {
-  max-width: 800px;      /* pick a width similar to Ingreso card */
-  margin: 20px auto;     /* center horizontally like Ingreso */
+  max-width: 800px;
+  /* pick a width similar to Ingreso card */
+  margin: 20px auto;
+  /* center horizontally like Ingreso */
 }
 
 .card {
@@ -200,8 +203,9 @@ button.small {
   margin-bottom: var(--spacing-md);
   border-bottom: 1px solid var(--border);
   padding-bottom: var(--spacing-xs);
-  justify-content: center;  /* centers buttons horizontally */
-  gap: 8px;        
+  justify-content: center;
+  /* centers buttons horizontally */
+  gap: 8px;
 }
 
 .tab {
@@ -385,8 +389,208 @@ hr {
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
-  gap: 4px; /* optional spacing between checkbox and text */
+  gap: 4px;
+  /* optional spacing between checkbox and text */
 }
+
+.suggest {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 50;
+  margin-top: 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.suggest li {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--bg-body);
+}
+
+.suggest li:last-child {
+  border-bottom: none;
+}
+
+.suggest li:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* Print Media Query */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  .container {
+    max-width: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .card {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .collapser {
+    display: none !important;
+  }
+
+  .section-body {
+    display: block !important;
+    margin-top: 0;
+  }
+
+  .toolbar {
+    display: none;
+  }
+
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: var(--spacing-lg) 0;
+}
+
+.small {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* Print Styles */
+.print-page {
+  width: 8.5in;
+  margin: 0 auto;
+  background: white;
+  padding: 0.5in;
+}
+
+.print-text-block {
+  font-size: 10pt;
+  line-height: 1.4;
+  margin-bottom: 1em;
+}
+
+.print-text-block-inner {
+  text-align: justify;
+}
+
+/* Utilities */
+.inline-center {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.no-grow {
+  flex: 0 0 auto;
+}
+
+.self-center {
+  align-self: center;
+}
+
+.row--end {
+  align-items: flex-end;
+}
+
+/* Collapsibles */
+.collapser {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-main);
+  text-align: left;
+}
+
+.collapser:hover {
+  background: none;
+  transform: none;
+}
+
+.collapser h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.caret {
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+
+.collapser[aria-expanded="true"] .caret {
+  transform: rotate(90deg);
+}
+
+.section-body {
+  margin-top: var(--spacing-md);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.warn-badge {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
+  display: inline-block;
+}
+
+/* Diagnoses Grid */
+.diag-grid {
+  display: grid;
+  grid-template-columns: 200px 250px 1fr;
+  gap: var(--spacing-md);
+  align-items: start;
+  margin-bottom: var(--spacing-md);
+}
+
+/* AutoSuggest */
+.input-wrap {
+  position: relative;
+}
+
+.checkbox-consent {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  /* optional spacing between checkbox and text */
+}
+
 .suggest {
   position: absolute;
   top: 100%;
@@ -469,4 +673,49 @@ hr {
     background: transparent;
     resize: none;
   }
+}
+
+/* Password Toggle & Config Shared */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  padding-right: 40px;
+  /* Space for the eye icon */
+}
+
+.icon-button {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button:hover {
+  color: var(--primary);
+  background: transparent;
+  transform: none;
+}
+
+.config-section-wrapper {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.config-section-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
 }

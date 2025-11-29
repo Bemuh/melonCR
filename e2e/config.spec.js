@@ -122,7 +122,7 @@ test.describe('Doctor Profile and Config', () => {
         await page.locator('a:has-text("Configuración")').click();
 
         // Should see config panel with Profile tab active
-        await expect(page.locator('h1:has-text("Configuración")')).toBeVisible();
+        await expect(page.getByTestId('config-profile-tab')).toBeVisible();
 
         // Verify profile tab shows doctor info
         await expect(page.locator('input[value="Dr. Config Test"]')).toBeVisible();
@@ -180,6 +180,7 @@ test.describe('Doctor Profile and Config', () => {
         // Change value
         await page.getByTestId('config-inactivity-timeout').fill('15');
         await page.getByTestId('config-save-timer').click();
+        await page.getByTestId('btn-modal-confirm').click();
 
         // Reload to verify persistence
         await page.locator('button:has-text("Salir")').click();
@@ -203,7 +204,7 @@ test.describe('Doctor Profile and Config', () => {
 
         // Test navigation
         await page.locator('a:has-text("Configuración")').click();
-        await expect(page.locator('h1:has-text("Configuración")')).toBeVisible();
+        await expect(page.getByTestId('config-profile-tab')).toBeVisible();
 
         await page.locator('a:has-text("Inicio")').click();
 

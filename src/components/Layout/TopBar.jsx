@@ -1,10 +1,16 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
 
 export default function TopBar() {
     const { logout, user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Hide header on patient pages
+    if (location.pathname.startsWith('/patient/')) {
+        return null;
+    }
 
     return (
         <header style={{
