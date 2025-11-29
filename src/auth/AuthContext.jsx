@@ -103,10 +103,10 @@ export function AuthProvider({ children }) {
 
                 // Login success
                 setDbKey(masterKey);
-                setUser({ username });
                 console.log('AuthContext: login successful, opening DB...');
                 await openDb(username, masterKey);
                 console.log('AuthContext: DB opened');
+                setUser({ username }); // Set user AFTER DB is ready
 
                 // Load settings
                 try {
