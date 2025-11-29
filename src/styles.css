@@ -454,23 +454,6 @@ hr {
     display: none !important;
   }
 
-  .section-body {
-    display: block !important;
-    margin-top: 0;
-  }
-
-  .toolbar {
-    display: none;
-  }
-
-  border: 0;
-  border-top: 1px solid var(--border);
-  margin: var(--spacing-lg) 0;
-}
-
-.small {
-  font-size: 0.875rem;
-  color: var(--text-muted);
 }
 
 /* Print Styles */
