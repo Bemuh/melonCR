@@ -25,7 +25,7 @@ export function DoctorHeader({ doctor, marginBottom = 12 }) {
           </div>
         )}
         {doctor.specialty && <div>{doctor.specialty}</div>}
-        {doctor.medical_license && <div>RM: {doctor.medical_license}</div>}
+        {doctor.medical_license && <div>{doctor.medical_license}</div>}
         {doctor.address && <div>{doctor.address}</div>}
         {doctor.phone && <div>{doctor.phone}</div>}
         {doctor.email && <div>{doctor.email}</div>}
@@ -80,7 +80,7 @@ export function DoctorFooter({ doctor, marginBottom = 0, children }) {
         <div style={{ width: '250px', borderBottom: '1px solid #000', marginBottom: '4px' }}></div>
         <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.9rem' }}>{doctor.name}</div>
         <div style={{ fontSize: '0.85rem' }}>{doctor.specialty}</div>
-        <div style={{ fontSize: '0.85rem' }}>RM: {doctor.medical_license}</div>
+        <div style={{ fontSize: '0.85rem' }}>{doctor.medical_license}</div>
       </div>
       {children}
     </div>

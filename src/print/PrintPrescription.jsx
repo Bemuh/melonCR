@@ -8,7 +8,7 @@ import {
   formatPrintDateTime,
   DoctorFooter
 } from "./PrintShared.jsx";
-import { getEncounterLabel } from "../utils.js";
+import { getEncounterLabel, isoToBogotaText } from "../utils.js";
 
 const isElectron =
   typeof window !== "undefined" && !!window.electronAPI;
@@ -294,9 +294,7 @@ export default function PrintPrescription() {
               </div>
               <div>
                 <strong>Fecha y hora de atención:</strong>{" "}
-                {formatYMD(
-                  encounter.occurred_at
-                )}
+                {isoToBogotaText(encounter.occurred_at)}
               </div>
               <div>
                 <strong>CAS:</strong>{" "}
@@ -434,9 +432,9 @@ export default function PrintPrescription() {
         </div>
       ))}
 
-      <div className="print-footer-text">
+      {/* <div className="print-footer-text">
         Generado el {printedAt}
-      </div>
+      </div> */}
 
       {modal.open && (
         <Modal

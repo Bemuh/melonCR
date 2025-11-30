@@ -519,22 +519,31 @@ function Procedures({ encounterId }) {
   if (!rows.length) return null;
 
   return (
-    <div className="print-text-block">
-      <strong>Procedimientos</strong>
-      <ul>
-        {rows.map((pr) => (
-          <li key={pr.id}>
-            {pr.name} {pr.code ? `(${pr.code})` : ""}
-            {pr.description && <div><small>{pr.description}</small></div>}
+    <>
+      {rows.map((pr) => (
+        <div key={pr.id} className="print-text-block">
+          <strong>Procedimiento</strong>
+          <div style={{ marginTop: '4px' }}>
+            <div style={{ fontWeight: 'bold' }}>
+              {pr.name} {pr.code ? `(${pr.code})` : ""}
+            </div>
+            {pr.description && (
+              <div
+                className="print-text-block-inner"
+                style={{ whiteSpace: "pre-wrap", textAlign: "left", marginTop: '4px' }}
+              >
+                {pr.description}
+              </div>
+            )}
             {pr.consent_obtained === 1 && (
-              <div style={{ fontSize: '0.9em', fontStyle: 'italic' }}>
+              <div style={{ fontStyle: 'italic', marginTop: '4px' }}>
                 Consentimiento informado obtenido
               </div>
             )}
-          </li>
-        ))}
-      </ul>
-    </div>
+          </div>
+        </div>
+      ))}
+    </>
   );
 }
 
