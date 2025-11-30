@@ -46,8 +46,8 @@
     "@playwright/test": "^1.40.0"
   },
   "build": {
-    "appId": "com.example.clinic",
-    "productName": "ClinicApp",
+    "appId": "com.example.meloncr",
+    "productName": "MelonCR",
     "asar": true,
     "files": [
       "dist/**/*",
