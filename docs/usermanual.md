@@ -87,14 +87,14 @@ Al crear una nueva atención, encontrará varias secciones desplegables para reg
 
 ### Historia Clínica
 Para generar un PDF de la historia completa del paciente (o de la atención actual):
-- Haga clic en el botón de **Imprimir** (icono de impresora) en la barra superior de la atención.
-- Se abrirá una vista previa en formato carta.
+- Haga clic en el botón de **Exportar Historia** en la barra superior de la atención.
+
 
 ### Fórmula Médica
 Para imprimir solo la receta médica:
-- Vaya a la sección de "Fórmula Médica".
-- Haga clic en el botón **Imprimir Fórmula**.
-- El PDF incluirá su firma (si la configuró) y los medicamentos prescritos.
+- Haga clic en el botón **Exportar Fórmula** en la barra superior de la atención.
+
+En ambos casos, se abrirá una vista previa en formato carta y el diálogo para guardar el archivo PDF. El PDF incluirá su firma (si la configuró) y la información seleccionada.
 
 ---
 
