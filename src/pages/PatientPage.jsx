@@ -297,9 +297,9 @@ export default function PatientPage() {
       {/* Encounter header */}
       <div className="card">
         <div className="row">
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-            <label style={{ marginBottom: 0 }}>
-              Atención
+          <div>
+            <label>Atención</label>
+            <div className="input-with-button">
               <select
                 value={activeEncounterId || ""}
                 onChange={(e) => {
@@ -315,10 +315,10 @@ export default function PatientPage() {
                   </option>
                 ))}
               </select>
-            </label>
-            <button onClick={() => createNewEncounter(patient)} data-testid="btn-new-encounter">
-              Nueva
-            </button>
+              <button onClick={() => createNewEncounter(patient)} data-testid="btn-new-encounter">
+                Nueva
+              </button>
+            </div>
           </div>
 
           <label>
