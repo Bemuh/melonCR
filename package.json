@@ -1,5 +1,5 @@
 {
-  "name": "MelonClinicRecords",
+  "name": "melon-clinic-records",
   "version": "0.1.0",
   "description": "Clinic desktop app (Vite + React + sql.js) packaged with Electron",
   "author": "Daniel Avila",

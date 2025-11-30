@@ -1,114 +1,136 @@
-# melonCR — Historia Clínica offline (PWA + Electron)
+# melon-clinic-records — Historia Clínica Offline (Electron + Encrypted DB)
 
-Aplicación de historia clínica ambulatoria pensada para consultorios pequeños.  
-Funciona como **PWA en el navegador** y como **aplicación de escritorio** empaquetada con Electron, sin depender de un servidor.
+Aplicación de escritorio para gestión de historias clínicas ambulatorias, diseñada para consultorios pequeños.  
+Combina la flexibilidad de una **Single Page Application (React)** con la seguridad y privacidad de una **aplicación de escritorio (Electron)** con base de datos local encriptada.
+
+[📘 **Manual de Usuario (Documentación para Médicos)**](docs/usermanual.md)
 
 ---
 
 ## Características principales
 
-- **Ingreso de pacientes**
-  - Búsqueda por documento / nombre.
-  - Creación de pacientes nuevos con validación básica de duplicados.
+- **Seguridad y Privacidad**
+  - **Base de datos encriptada:** Cada usuario tiene su propio archivo de base de datos encriptado con AES-256-GCM.
+  - **Acceso protegido:** Sistema de login con contraseña y código de recuperación.
+  - **Cierre automático:** Temporizador de inactividad configurable para cerrar sesión automáticamente.
+  - **Offline First:** Funciona sin conexión a internet.
 
-- **Atenciones (encounters) por paciente**
-  - Múltiples atenciones por paciente (primera vez, control, procedimientos menores).
-  - Secciones por pestañas/accordion:
-    1. Datos de contacto del paciente
-    2. Motivo de consulta
-    3. Enfermedad actual
-    4. Antecedentes
-    5. Signos vitales (con cálculo automático de IMC)
-    6. Examen físico
-    7. Análisis
-    8. Plan / Conducta
-    9. Diagnósticos CIE-10 (con búsqueda y finalidad/causa externa RIPS)
-    10. Fórmula médica
-    11. Procedimientos menores (CUPS) y consentimiento
+- **Gestión Clínica**
+  - **Pacientes:** Búsqueda rápida, creación y edición.
+  - **Atenciones (Encounters):** Registro completo (Motivo, Enfermedad Actual, Antecedentes, Examen Físico, Diagnósticos CIE-10, Plan).
+  - **Fórmulas Médicas:** Generación e impresión de recetas con cálculo de cantidades.
+  - **Procedimientos:** Registro de procedimientos menores y generación de consentimientos informados.
+  - **Adjuntos:** Soporte para adjuntar archivos a la historia clínica.
 
-- **Historia clínica impresa**
-  - Vista `/print/:patientId` con toda la historia del paciente.
-  - Formato **Carta**, orientación vertical, márgenes mínimos (ajustables en el diálogo de impresión).
-  - Encabezado con datos de la médica y logo (configurables en `src/config/doctor.json` y `FullColor.png`).
-  - Texto justificado y secciones impresas en el mismo orden que en la pantalla de paciente.
-
-- **Fórmula médica impresa**
-  - Vista `/rx/:encounterId` para imprimir sólo la fórmula del encuentro activo.
-  - Cálculo automático de cantidad total sugerida.
-  - Soporta tratamientos >30 días generando copias por bloques de 30 días.
-  - Incluye espacio de firma y textos aclaratorios.
-
-- **Almacenamiento de datos**
-  - Base de datos SQLite embebida usando **sql.js**.
-  - Persistencia en **IndexedDB** vía `idb-keyval` (clave `clinic_db_sqljs_v1`).
-  - Esquema con tablas: `patients`, `encounters`, `diagnoses`, `prescriptions`, `procedures` y `attachments`.
-  - Opción de respaldo a archivo fijo mediante File System Access API (cuando el navegador lo permite).
+- **Impresión y Exportación**
+  - **Historia Clínica PDF:** Formato profesional, paginado y listo para imprimir.
+  - **Fórmulas PDF:** Diseño claro para farmacia y paciente.
+  - **Respaldo:** Exportación manual de la base de datos completa.
 
 ---
 
 ## Tecnologías
 
-- **Frontend:** React 18, React Router DOM (`HashRouter`).
-- **Bundler:** Vite.
-- **Base de datos local:** sql.js (SQLite → WASM) + IndexedDB.
-- **Estado puntual:** componentes con hooks; algunas ayudas con pequeños stores.
-- **Escritorio:** Electron (ventana única, sin Node en el renderer, `preload.cjs` mínimo).
-- **Estilos:** CSS plano en `src/styles.css`.
+- **Core:** [Electron](https://www.electronjs.org/) (Runtime de escritorio).
+- **Frontend:** [React](https://react.dev/) + [Vite](https://vitejs.dev/).
+- **Base de Datos:** [sql.js](https://sql.js.org/) (SQLite compilado a WebAssembly).
+- **Persistencia:**
+  - **Modo Escritorio:** File System Access API (archivo encriptado en disco).
+  - **Modo Web (Dev):** IndexedDB (vía `idb-keyval`).
+- **Cifrado:** Web Crypto API (PBKDF2 para derivación de claves, AES-GCM para cifrado).
+- **Testing:** [Playwright](https://playwright.dev/) (E2E).
 
 ---
 
-## Requisitos
+## Requisitos de Desarrollo
 
-- Node.js y npm instalados (versión LTS recomendada).
+- **Node.js:** v18+ (LTS recomendado).
+- **npm:** Incluido con Node.js.
 
 ---
 
-## Ejecución en modo web (desarrollo)
+## Configuración y Ejecución
+
+### 1. Instalación de dependencias
 
 ```bash
 npm install
+```
+
+### 2. Modo Desarrollo
+
+Para trabajar en la interfaz (modo navegador, sin funcionalidades nativas de Electron como encriptación de archivos en disco):
+
+```bash
 npm run dev
-# Abrir: http://localhost:5173
-````
-
----
-
-## Build web (PWA)
-
-```bash
-npm run build      # genera /dist
-npm run preview    # sirve la build en modo vista previa
+# Abre http://localhost:5173
 ```
 
-El contenido de `dist/` puede desplegarse en cualquier servidor estático.
-
----
-
-## Aplicación de escritorio (Electron)
+Para probar la aplicación completa en Electron (con hot-reload del frontend):
 
 ```bash
-# Desarrollo: compila la web y abre Electron apuntando al dev server
 npm run desktop:dev
+```
+*Nota: En este modo, la base de datos se guarda en la carpeta del proyecto o en datos de usuario de la app de desarrollo.*
 
-# Build portátil para Windows (EXE en /release)
+### 3. Construcción (Build)
+
+Para generar el ejecutable portátil para Windows:
+
+```bash
 npm run desktop:build
-
-# Sólo empaquetar directorio (sin instalador)
-npm run desktop:pack
+# El ejecutable se generará en la carpeta `release/`
 ```
 
-Electron carga la misma build de Vite (`dist/index.html`) y respeta el modo offline de la PWA.
+---
+
+## Persistencia y Seguridad
+
+La aplicación utiliza un modelo de **"Base de Datos por Usuario"**.
+
+1. **Creación de Cuenta:**
+   - Se genera una `Master Key` aleatoria.
+   - Esta llave se encripta con la contraseña del usuario (derivada con PBKDF2) y se guarda en el perfil del usuario.
+   - Se genera un **Código de Recuperación** que también encripta una copia de la `Master Key`.
+
+2. **Almacenamiento:**
+   - La base de datos SQLite completa se serializa a un `Uint8Array`.
+   - Se encripta usando la `Master Key` con AES-GCM.
+   - Se guarda en el disco local del usuario (junto al ejecutable en modo portátil o en `AppData` según configuración).
+
+3. **Inactividad:**
+   - La aplicación monitorea eventos de ratón y teclado.
+   - Si no hay actividad por el tiempo configurado (default 10 min), se cierra la sesión y se descarga la clave de memoria.
 
 ---
 
-## Notas sobre datos y respaldos
+## Testing
 
-* La base de datos se guarda automáticamente en IndexedDB; no hay backend.
-* Es posible:
+El proyecto utiliza **Playwright** para pruebas de extremo a extremo (E2E).
 
-  * Exportar la base de datos como archivo `.sqljs` (descarga manual).
-  * Elegir un archivo fijo de respaldo; cada operación de escritura lo actualiza (cuando el navegador/OS lo permite).
+```bash
+# Ejecutar todos los tests (headless)
+npm run test:run
+
+# Ejecutar tests con interfaz gráfica (útil para depurar)
+npm run test:ui
+```
 
 ---
 
-Última generación de este README de referencia: **2025-09-24**. 
+## Estructura del Proyecto
+
+- `src/`
+  - `auth/`: Lógica de autenticación y criptografía (`AuthContext`).
+  - `components/`: Componentes React reutilizables.
+  - `db/`: Capa de base de datos (`sql.js` + persistencia).
+  - `pages/`: Vistas principales (PatientPage, LoginPage, etc.).
+  - `electron/`: Proceso principal de Electron (`main.cjs`, `preload.cjs`).
+- `e2e/`: Tests de Playwright.
+- `docs/`: Documentación adicional y manual de usuario.
+
+---
+
+## Licencia
+
+Propiedad privada. Todos los derechos reservados.
