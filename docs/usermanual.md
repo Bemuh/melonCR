@@ -63,23 +63,24 @@ Al seleccionar un paciente, accederá a su historia clínica. Aquí verá:
 
 ## 5. Registro de Atención (Consulta)
 
-Al crear una nueva atención, encontrará varias secciones desplegables para registrar la información clínica:
+Al crear una nueva atención, encontrará varias secciones desplegables. **Tenga en cuenta que las secciones disponibles cambian según el "Tipo" de atención seleccionado:**
 
+### Atención General (Primera vez / Control)
+Incluye la historia clínica completa:
 1. **Motivo de Consulta y Enfermedad Actual:** Describa por qué viene el paciente.
 2. **Antecedentes:** Personales, familiares, alérgicos, etc.
 3. **Signos Vitales:** Tensión arterial, peso, talla (el IMC se calcula solo), frecuencia cardíaca, etc.
 4. **Examen Físico:** Hallazgos de la exploración.
 5. **Análisis y Plan:** Su interpretación médica y conducta a seguir.
-6. **Diagnósticos:**
-   - Busque diagnósticos por código CIE-10 o nombre.
-   - Seleccione si es "Principal" o "Relacionado".
-   - Indique la finalidad de la consulta y causa externa (requerido para RIPS).
-7. **Fórmula Médica:**
-   - Agregue medicamentos indicando principio activo, dosis, frecuencia y duración.
-   - El sistema calcula la cantidad total sugerida.
-8. **Procedimientos:**
-   - Registre procedimientos menores realizados.
-   - Puede generar e imprimir el **Consentimiento Informado**.
+6. **Diagnósticos:** Busque diagnósticos por código CIE-10 o nombre.
+7. **Fórmula Médica:** Prescripción de medicamentos.
+
+### Procedimientos Menores
+Muestra un formulario simplificado enfocado en la intervención:
+1. **Procedimientos:** Registre el procedimiento realizado y el **Consentimiento Informado**.
+2. **Diagnósticos:** Código CIE-10 asociado al procedimiento.
+3. **Adjuntos:** Espacio para subir fotos o documentos relacionados (ej. fotos antes/después).
+4. **Fórmula Médica:** Si se requiere medicación post-procedimiento.
 
 ---
 
